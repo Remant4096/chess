@@ -333,6 +333,11 @@ public:
         }
     }
 
+    int simulatedBoardValue()
+    {
+        return arrCpy[simulatedTempCord[1]][simulatedTempCord[0]];
+    }
+
     bool simulatedBoundCheck()
     {
         if (simulatedTempCord[0] >= 0 && simulatedTempCord[0] <= 7 && simulatedTempCord[1] >= 0 && simulatedTempCord[1] <= 7)
@@ -364,10 +369,8 @@ public:
     {
 
         int i, j;
-        int simulatedBoardValue;
         int kingX;
         int kingY;
-        int simulatedTempCord[2];
 
         // simulating move in arrCpy;
         copyArr();
@@ -375,7 +378,7 @@ public:
         arrCpy[oldY][oldX] = 0;
         simulatedKingXY(kingX, kingY);
 
-        // check like rook if(queen or rook found ) of opponent end checking illegal move ;
+        // check for rook and queen
         for (i = 0; i < 4; i++)
         {
             for (j = 1; j < 9; j++)
@@ -403,15 +406,13 @@ public:
                     break;
                 }
 
-                simulatedBoardValue = arrCpy[simulatedTempCord[1]][simulatedTempCord[0]];
-
                 if (simulatedBoundCheck())
                 {
-                    if (simulatedBoardValue == 0)
+                    if (simulatedBoardValue() == 0)
                     {
                         continue;
                     }
-                    else if (simulatedBoardValue == 8 - target || simulatedBoardValue == 11 - target)
+                    else if (simulatedBoardValue() == 8 - target || simulatedBoardValue() == 11 - target)
                     {
                         return true;
                     }
@@ -428,7 +429,7 @@ public:
             }
         }
 
-        // check like bishop(if queen or bishop found ) of opponet end checking illegal move;
+        // check for bishop and queen;
         for (i = 0; i < 4; i++)
         {
             for (j = 1; j < 9; j++)
@@ -456,15 +457,13 @@ public:
                     break;
                 }
 
-                simulatedBoardValue = arrCpy[simulatedTempCord[1]][simulatedTempCord[0]];
-
                 if (simulatedBoundCheck())
                 {
-                    if (simulatedBoardValue == 0)
+                    if (simulatedBoardValue() == 0)
                     {
                         continue;
                     }
-                    else if (simulatedBoardValue == 10 - target || simulatedBoardValue == 11 - target)
+                    else if (simulatedBoardValue() == 10 - target || simulatedBoardValue() == 11 - target)
                     {
                         return true;
                     }
@@ -482,7 +481,70 @@ public:
         }
 
         // if move is made by king only then
+        // check for king
+        {
+            int dx[8] = {0, 0, 1, 1, 1, -1, -1, -1};
+            int dy[8] = {1, -1, 0, 1, -1, 0, 1, -1};
 
+            for (i = 0; i < 8; i++)
+            {
+                simulatedTempCord[0] = kingX + dx[i];
+                simulatedTempCord[1] = kingY + dy[i];
+                if (simulatedBoundCheck())
+                {
+                    if (simulatedBoardValue() == 12 - target)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // check for knight;
+
+        {
+            int dx[8] = {2, 2, -2, -2, 1, -1, 1, -1};
+            int dy[8] = {1, -1, 1, -1, 2, 2, -2, -2};
+
+            for (i = 0; i < 8; i++)
+            {
+                simulatedTempCord[0] = kingX + dx[i];
+                simulatedTempCord[1] = kingY + dy[i];
+                if (simulatedBoundCheck())
+                {
+                    if (simulatedBoardValue() == 9 - target)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // check for pawn;
+        {
+            int i;
+            int direction = 1;
+            int dx[2]={-1,1};
+
+            if(board.currentTurn){
+                direction =-1;
+            }
+            for(i=0;i<2;i++){
+
+            simulatedTempCord[0]=kingX + dx[i];
+            simulatedTempCord[1]=kingY + direction;
+
+            if(simulatedBoundCheck()){
+                if(simulatedBoardValue() == 7-target){
+                    return true;
+                }
+            }
+
+            }
+            
+
+        }
+        
         return false;
     }
 
