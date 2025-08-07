@@ -271,12 +271,22 @@ class MoveValidation
 {
 public:
     int possibleMoves[28][2];
-    int arrCpy[8][8];
     int possibleMovesIndex;
+    int arrCpy[8][8];
     int tempCord[2];
     int simulatedTempCord[2];
     Board &board;
     int target;
+    int fromX;
+    int fromY;
+    int kingX;
+    int kingY;
+    int i,j;
+    static const int knightDx[8];
+    static const int knightDy[8];
+    static const int kingDx[8];
+    static const int kingDy[8];
+    static const int pawnDy[2];
 
 public:
     MoveValidation(Board &b) : board(b), possibleMovesIndex(0) {}
@@ -308,7 +318,6 @@ public:
 
     bool checkPlayedMove(int newX, int newY)
     {
-        int i;
         for (i = 0; i < possibleMovesIndex; i++)
         {
             if (possibleMoves[i][0] == newX && possibleMoves[i][1] == newY)
@@ -323,7 +332,6 @@ public:
 
     void copyArr()
     {
-        int i, j;
         for (i = 0; i < 8; i++)
         {
             for (j = 0; j < 8; j++)
@@ -349,7 +357,6 @@ public:
 
     void simulatedKingXY(int &x, int &y)
     {
-        int i, j;
         for (i = 0; i < 8; i++)
         {
 
@@ -367,10 +374,6 @@ public:
 
     bool simulatedKingInCheck(int oldX, int oldY, int x, int y)
     {
-
-        int i, j;
-        int kingX;
-        int kingY;
 
         // simulating move in arrCpy;
         copyArr();
@@ -483,13 +486,11 @@ public:
         // if move is made by king only then
         // check for king
         {
-            int dx[8] = {0, 0, 1, 1, 1, -1, -1, -1};
-            int dy[8] = {1, -1, 0, 1, -1, 0, 1, -1};
 
             for (i = 0; i < 8; i++)
             {
-                simulatedTempCord[0] = kingX + dx[i];
-                simulatedTempCord[1] = kingY + dy[i];
+                simulatedTempCord[0] = kingX + kingDx[i];
+                simulatedTempCord[1] = kingY + kingDy[i];
                 if (simulatedBoundCheck())
                 {
                     if (simulatedBoardValue() == 12 - target)
@@ -503,13 +504,11 @@ public:
         // check for knight;
 
         {
-            int dx[8] = {2, 2, -2, -2, 1, -1, 1, -1};
-            int dy[8] = {1, -1, 1, -1, 2, 2, -2, -2};
 
             for (i = 0; i < 8; i++)
             {
-                simulatedTempCord[0] = kingX + dx[i];
-                simulatedTempCord[1] = kingY + dy[i];
+                simulatedTempCord[0] = kingX + knightDx[i];
+                simulatedTempCord[1] = kingY + knightDy[i];
                 if (simulatedBoundCheck())
                 {
                     if (simulatedBoardValue() == 9 - target)
@@ -522,35 +521,35 @@ public:
 
         // check for pawn;
         {
-            int i;
             int direction = 1;
-            int dx[2]={-1,1};
+            int dx[2] = {-1, 1};
 
-            if(board.currentTurn){
-                direction =-1;
+            if (board.currentTurn)
+            {
+                direction = -1;
             }
-            for(i=0;i<2;i++){
+            for (i = 0; i < 2; i++)
+            {
 
-            simulatedTempCord[0]=kingX + dx[i];
-            simulatedTempCord[1]=kingY + direction;
+                simulatedTempCord[0] = kingX + dx[i];
+                simulatedTempCord[1] = kingY + direction;
 
-            if(simulatedBoundCheck()){
-                if(simulatedBoardValue() == 7-target){
-                    return true;
+                if (simulatedBoundCheck())
+                {
+                    if (simulatedBoardValue() == 7 - target)
+                    {
+                        return true;
+                    }
                 }
             }
-
-            }
-            
-
         }
-        
+
         return false;
     }
 
-    void setPossibleMove(int oldX, int oldY)
+    void setPossibleMove()
     {
-        if (!simulatedKingInCheck(oldX, oldY, tempCord[0], tempCord[1]))
+        if (!simulatedKingInCheck(fromX, fromY, tempCord[0], tempCord[1]))
         {
             possibleMoves[possibleMovesIndex][0] = tempCord[0];
             possibleMoves[possibleMovesIndex][1] = tempCord[1];
@@ -558,23 +557,25 @@ public:
         }
     }
 
-    bool checkCell(int x, int y)
+    bool checkCell()
     {
 
         if (boardValue() == 0)
         {
-            setPossibleMove(x, y);
+            setPossibleMove();
             return true;
         }
         else if (boardValue() > 6 - target && boardValue() <= 12 - target)
         {
-            setPossibleMove(x, y);
+            setPossibleMove();
         }
         return false;
     }
 
-    void prepareChecking()
+    void prepareChecking(int oldX, int oldY)
     {
+        fromX = oldX;
+        fromY = oldY;
         setTarget();
     }
 
@@ -593,26 +594,26 @@ public:
         tempCord[1] = y + direction;
         if (boundCheck() && boardValue() == 0)
         {
-            setPossibleMove(x, y);
+            setPossibleMove();
 
             if (y == startingYValue)
             {
                 tempCord[0] = x;
                 tempCord[1] = y + 2 * direction;
                 if (boundCheck() && boardValue() == 0)
-                    setPossibleMove(x, y);
+                    setPossibleMove();
             }
         }
 
         tempCord[0] = x + 1;
         tempCord[1] = y + direction;
         if (boundCheck() && boardValue() > 6 - target && boardValue() <= 12 - target)
-            setPossibleMove(x, y);
+            setPossibleMove();
 
         tempCord[0] = x - 1;
         tempCord[1] = y + direction;
         if (boundCheck() && boardValue() > 6 - target && boardValue() <= 12 - target)
-            setPossibleMove(x, y);
+            setPossibleMove();
     }
 
     void rook(int x, int y)
@@ -647,7 +648,7 @@ public:
 
                 if (boundCheck())
                 {
-                    if (!checkCell(x, y))
+                    if (!checkCell())
                     {
                         break;
                     }
@@ -662,16 +663,15 @@ public:
 
     void knight(int x, int y)
     {
-        int dx[8] = {2, 2, -2, -2, 1, -1, 1, -1};
-        int dy[8] = {1, -1, 1, -1, 2, 2, -2, -2};
         int i;
+
         for (i = 0; i < 8; i++)
         {
-            tempCord[0] = x + dx[i];
-            tempCord[1] = y + dy[i];
+            tempCord[0] = x + knightDx[i];
+            tempCord[1] = y + knightDy[i];
             if (boundCheck())
             {
-                checkCell(x, y);
+                checkCell();
             }
         }
     }
@@ -708,7 +708,7 @@ public:
 
                 if (boundCheck())
                 {
-                    if (!checkCell(x, y))
+                    if (!checkCell())
                     {
                         break;
                     }
@@ -729,17 +729,15 @@ public:
 
     void king(int x, int y)
     {
-        int dx[8] = {0, 0, 1, 1, 1, -1, -1, -1};
-        int dy[8] = {1, -1, 0, 1, -1, 0, 1, -1};
         int i;
 
         for (i = 0; i < 8; i++)
         {
-            tempCord[0] = x + dx[i];
-            tempCord[1] = y + dy[i];
+            tempCord[0] = x + kingDx[i];
+            tempCord[1] = y + kingDy[i];
             if (boundCheck())
             {
-                checkCell(x, y);
+                checkCell();
             }
         }
     }
@@ -752,7 +750,7 @@ public:
             selectedPiece = selectedPiece - 6;
         }
 
-        prepareChecking();
+        prepareChecking(oldX, oldY);
 
         switch (selectedPiece)
         {
@@ -780,6 +778,13 @@ public:
         return checkPlayedMove(newX, newY);
     }
 };
+
+const int MoveValidation::knightDx[8] = {2, 2, -2, -2, 1, -1, 1, -1};
+const int MoveValidation::knightDy[8] = {1, -1, 1, -1, 2, 2, -2, -2};
+const int MoveValidation::kingDx[8] = {0, 0, 1, 1, 1, -1, -1, -1};
+const int MoveValidation::kingDy[8] = {1, -1, 0, 1, -1, 0, 1, -1};
+const int MoveValidation::pawnDy[2]={1,-1};
+
 
 class InputHandling
 {
