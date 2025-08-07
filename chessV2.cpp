@@ -2,7 +2,7 @@
 #include <vector>
 #include <termios.h>
 #include <unistd.h>
-
+//changes were made;
 #define RESET "\033[0m"
 #define WHITE "\033[1;97m" // Bright white (solid)
 #define BLACK "\033[0;37m" // Dim gray (transparent)
