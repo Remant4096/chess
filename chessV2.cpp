@@ -201,8 +201,8 @@ public:
 
     void display()
     {
-        // std::cout << "\033c";
-        system("clear");
+        std::cout << "\033c";
+        // system("clear");
         std::string p[13] = {" ", "♟", "♜", "♞", "♝", "♛", "♚", "♙", "♖", "♘", "♗", "♕", "♔"};
         // std::string p[13] = {" ","♙", "♖", "♘", "♗", "♕", "♔", "♟", "♜", "♞", "♝", "♛", "♚"};
         std::cout << "\n";
@@ -274,6 +274,7 @@ public:
     int arrCpy[8][8];
     int possibleMovesIndex;
     int tempCord[2];
+    int simulatedTempCord[2];
     Board &board;
     int target;
 
@@ -332,23 +333,47 @@ public:
         }
     }
 
-    void kingXY(int &x, int &y)
+    bool simulatedBoundCheck()
     {
+        if (simulatedTempCord[0] >= 0 && simulatedTempCord[0] <= 7 && simulatedTempCord[1] >= 0 && simulatedTempCord[1] <= 7)
+        {
+            return true;
+        }
+        return false;
     }
 
-    bool kingInCheck(int oldX, int oldY, int x, int y)
+    void simulatedKingXY(int &x, int &y)
+    {
+        int i, j;
+        for (i = 0; i < 8; i++)
+        {
+
+            for (j = 0; j < 8; j++)
+            {
+                if (arrCpy[i][j] == 6 + target)
+                {
+                    x = j;
+                    y = i;
+                    return;
+                }
+            }
+        }
+    }
+
+    bool simulatedKingInCheck(int oldX, int oldY, int x, int y)
     {
 
         int i, j;
         int simulatedBoardValue;
         int kingX;
         int kingY;
+        int simulatedTempCord[2];
 
         // simulating move in arrCpy;
         copyArr();
         arrCpy[y][x] = arrCpy[oldY][oldX];
         arrCpy[oldY][oldX] = 0;
-        kingXY(kingX, kingY);
+        simulatedKingXY(kingX, kingY);
 
         // check like rook if(queen or rook found ) of opponent end checking illegal move ;
         for (i = 0; i < 4; i++)
@@ -358,29 +383,29 @@ public:
                 switch (i)
                 {
                 case 0:
-                    tempCord[0] = kingX;
-                    tempCord[1] = kingY + j;
+                    simulatedTempCord[0] = kingX;
+                    simulatedTempCord[1] = kingY + j;
                     break;
                 case 1:
-                    tempCord[0] = kingX;
-                    tempCord[1] = kingY - j;
+                    simulatedTempCord[0] = kingX;
+                    simulatedTempCord[1] = kingY - j;
                     break;
                 case 2:
-                    tempCord[0] = kingX + j;
-                    tempCord[1] = y;
+                    simulatedTempCord[0] = kingX + j;
+                    simulatedTempCord[1] = kingY;
                     break;
                 case 3:
-                    tempCord[0] = kingX - j;
-                    tempCord[1] = kingY;
+                    simulatedTempCord[0] = kingX - j;
+                    simulatedTempCord[1] = kingY;
                     break;
 
                 default:
                     break;
                 }
 
-                simulatedBoardValue = arrCpy[tempCord[1]][tempCord[0]];
+                simulatedBoardValue = arrCpy[simulatedTempCord[1]][simulatedTempCord[0]];
 
-                if (boundCheck())
+                if (simulatedBoundCheck())
                 {
                     if (simulatedBoardValue == 0)
                     {
@@ -411,29 +436,29 @@ public:
                 switch (i)
                 {
                 case 0:
-                    tempCord[0] = kingX + j;
-                    tempCord[1] = kingY - j;
+                    simulatedTempCord[0] = kingX + j;
+                    simulatedTempCord[1] = kingY - j;
                     break;
                 case 1:
-                    tempCord[0] = kingX - j;
-                    tempCord[1] = kingY + j;
+                    simulatedTempCord[0] = kingX - j;
+                    simulatedTempCord[1] = kingY + j;
                     break;
                 case 2:
-                    tempCord[0] = kingX - j;
-                    tempCord[1] = kingY - j;
+                    simulatedTempCord[0] = kingX - j;
+                    simulatedTempCord[1] = kingY - j;
                     break;
                 case 3:
-                    tempCord[0] = kingX + j;
-                    tempCord[1] = kingY + j;
+                    simulatedTempCord[0] = kingX + j;
+                    simulatedTempCord[1] = kingY + j;
                     break;
 
                 default:
                     break;
                 }
 
-                simulatedBoardValue = arrCpy[tempCord[1]][tempCord[0]];
+                simulatedBoardValue = arrCpy[simulatedTempCord[1]][simulatedTempCord[0]];
 
-                if (boundCheck())
+                if (simulatedBoundCheck())
                 {
                     if (simulatedBoardValue == 0)
                     {
@@ -456,32 +481,32 @@ public:
             }
         }
 
-        //if move is made by king only then
-            
-        //check for pawn;
+        // if move is made by king only then
 
         return false;
     }
 
-    void setPossibleMove()
+    void setPossibleMove(int oldX, int oldY)
     {
-
-        possibleMoves[possibleMovesIndex][0] = tempCord[0];
-        possibleMoves[possibleMovesIndex][1] = tempCord[1];
-        possibleMovesIndex++;
+        if (!simulatedKingInCheck(oldX, oldY, tempCord[0], tempCord[1]))
+        {
+            possibleMoves[possibleMovesIndex][0] = tempCord[0];
+            possibleMoves[possibleMovesIndex][1] = tempCord[1];
+            possibleMovesIndex++;
+        }
     }
 
-    bool checkCell()
+    bool checkCell(int x, int y)
     {
 
         if (boardValue() == 0)
         {
-            setPossibleMove();
+            setPossibleMove(x, y);
             return true;
         }
         else if (boardValue() > 6 - target && boardValue() <= 12 - target)
         {
-            setPossibleMove();
+            setPossibleMove(x, y);
         }
         return false;
     }
@@ -489,7 +514,6 @@ public:
     void prepareChecking()
     {
         setTarget();
-        copyArr();
     }
 
     void pawn(int x, int y)
@@ -507,26 +531,26 @@ public:
         tempCord[1] = y + direction;
         if (boundCheck() && boardValue() == 0)
         {
-            setPossibleMove();
+            setPossibleMove(x, y);
 
             if (y == startingYValue)
             {
                 tempCord[0] = x;
                 tempCord[1] = y + 2 * direction;
                 if (boundCheck() && boardValue() == 0)
-                    setPossibleMove();
+                    setPossibleMove(x, y);
             }
         }
 
         tempCord[0] = x + 1;
         tempCord[1] = y + direction;
         if (boundCheck() && boardValue() > 6 - target && boardValue() <= 12 - target)
-            setPossibleMove();
+            setPossibleMove(x, y);
 
         tempCord[0] = x - 1;
         tempCord[1] = y + direction;
         if (boundCheck() && boardValue() > 6 - target && boardValue() <= 12 - target)
-            setPossibleMove();
+            setPossibleMove(x, y);
     }
 
     void rook(int x, int y)
@@ -561,7 +585,7 @@ public:
 
                 if (boundCheck())
                 {
-                    if (!checkCell())
+                    if (!checkCell(x, y))
                     {
                         break;
                     }
@@ -585,7 +609,7 @@ public:
             tempCord[1] = y + dy[i];
             if (boundCheck())
             {
-                checkCell();
+                checkCell(x, y);
             }
         }
     }
@@ -622,7 +646,7 @@ public:
 
                 if (boundCheck())
                 {
-                    if (!checkCell())
+                    if (!checkCell(x, y))
                     {
                         break;
                     }
@@ -653,7 +677,7 @@ public:
             tempCord[1] = y + dy[i];
             if (boundCheck())
             {
-                checkCell();
+                checkCell(x, y);
             }
         }
     }
