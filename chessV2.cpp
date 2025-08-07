@@ -2,8 +2,7 @@
 #include <vector>
 #include <termios.h>
 #include <unistd.h>
-//changes were made;
-//changes x2
+
 #define RESET "\033[0m"
 #define WHITE "\033[1;97m" // Bright white (solid)
 #define BLACK "\033[0;37m" // Dim gray (transparent)
@@ -65,20 +64,73 @@ public:
 
     void updateCursor(char ch)
     {
+
         switch (ch)
         {
         case 'w':
             down();
             break;
+        case '8':
+            down();
+            break;
+
         case 's':
             up();
             break;
+        case '2':
+            up();
+            break;
+
         case 'a':
             left();
             break;
+        case '4':
+            left();
+            break;
+
         case 'd':
             right();
             break;
+        case '6':
+            right();
+            break;
+
+        case 'q':
+            down();
+            left();
+            break;
+        case '7':
+            down();
+            left();
+            break;
+
+        case 'e':
+            down();
+            right();
+            break;
+        case '9':
+            down();
+            right();
+            break;
+
+        case 'c':
+            up();
+            right();
+            break;
+        case '3':
+            up();
+            right();
+            break;
+
+        case 'z':
+            up();
+            left();
+            break;
+        case '1':
+            up();
+            left();
+            break;
+
         case '\n':
             counterTrigger = true;
             enterCounter++;
@@ -96,7 +148,6 @@ public:
     std::vector<int> whiteKilled;
     std::vector<int> blackKilled;
     int currentTurn;
-    int arrCpy[8][8];
     Cursor &cursor;
 
 public:
@@ -125,44 +176,27 @@ public:
         }
     };
 
-    void copyArr()
-    {
-        int i, j;
-        for (i = 0; i < 8; i++)
-        {
-            for (j = 0; j < 8; j++)
-            {
-                arrCpy[i][j] = arr[i][j];
-            }
-        }
-    }
-
     void moveFromTo(int oldX, int oldY, int x, int y)
     {
 
-            int val = arr[y][x];
+        int val = arr[y][x];
 
-            if (val != 0)
+        if (val != 0)
+        {
+            if (val > 6)
             {
-                if (val > 6)
-                {
-                    whiteKilled.push_back(val);
-                }
-                else
-                {
-                    blackKilled.push_back(val);
-                }
+                whiteKilled.push_back(val);
             }
+            else
+            {
+                blackKilled.push_back(val);
+            }
+        }
 
-            arr[y][x] = arr[oldY][oldX];
-            arr[oldY][oldX] = 0;
+        arr[y][x] = arr[oldY][oldX];
+        arr[oldY][oldX] = 0;
 
-            currentTurn = !currentTurn;
-    }
-
-    int valueAt(int x, int y)
-    {
-        return arr[y][x];
+        currentTurn = !currentTurn;
     }
 
     void display()
@@ -237,6 +271,7 @@ class MoveValidation
 {
 public:
     int possibleMoves[28][2];
+    int arrCpy[8][8];
     int possibleMovesIndex;
     int tempCord[2];
     Board &board;
@@ -251,6 +286,7 @@ public:
 
         if (board.currentTurn)
         {
+            // blacks turn;
             target = 6;
         }
     }
@@ -258,13 +294,6 @@ public:
     int boardValue()
     {
         return board.arr[tempCord[1]][tempCord[0]];
-    }
-
-    void setPossibleMove()
-    {
-        possibleMoves[possibleMovesIndex][0] = tempCord[0];
-        possibleMoves[possibleMovesIndex][1] = tempCord[1];
-        possibleMovesIndex++;
     }
 
     bool boundCheck()
@@ -291,6 +320,157 @@ public:
         return false;
     }
 
+    void copyArr()
+    {
+        int i, j;
+        for (i = 0; i < 8; i++)
+        {
+            for (j = 0; j < 8; j++)
+            {
+                arrCpy[i][j] = board.arr[i][j];
+            }
+        }
+    }
+
+    void kingXY(int &x, int &y)
+    {
+    }
+
+    bool kingInCheck(int oldX, int oldY, int x, int y)
+    {
+
+        int i, j;
+        int simulatedBoardValue;
+        int kingX;
+        int kingY;
+
+        // simulating move in arrCpy;
+        copyArr();
+        arrCpy[y][x] = arrCpy[oldY][oldX];
+        arrCpy[oldY][oldX] = 0;
+        kingXY(kingX, kingY);
+
+        // check like rook if(queen or rook found ) of opponent end checking illegal move ;
+        for (i = 0; i < 4; i++)
+        {
+            for (j = 1; j < 9; j++)
+            {
+                switch (i)
+                {
+                case 0:
+                    tempCord[0] = kingX;
+                    tempCord[1] = kingY + j;
+                    break;
+                case 1:
+                    tempCord[0] = kingX;
+                    tempCord[1] = kingY - j;
+                    break;
+                case 2:
+                    tempCord[0] = kingX + j;
+                    tempCord[1] = y;
+                    break;
+                case 3:
+                    tempCord[0] = kingX - j;
+                    tempCord[1] = kingY;
+                    break;
+
+                default:
+                    break;
+                }
+
+                simulatedBoardValue = arrCpy[tempCord[1]][tempCord[0]];
+
+                if (boundCheck())
+                {
+                    if (simulatedBoardValue == 0)
+                    {
+                        continue;
+                    }
+                    else if (simulatedBoardValue == 8 - target || simulatedBoardValue == 11 - target)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    // if (non enemy queen or rook piece found)
+                    break;
+                }
+            }
+        }
+
+        // check like bishop(if queen or bishop found ) of opponet end checking illegal move;
+        for (i = 0; i < 4; i++)
+        {
+            for (j = 1; j < 9; j++)
+            {
+                switch (i)
+                {
+                case 0:
+                    tempCord[0] = kingX + j;
+                    tempCord[1] = kingY - j;
+                    break;
+                case 1:
+                    tempCord[0] = kingX - j;
+                    tempCord[1] = kingY + j;
+                    break;
+                case 2:
+                    tempCord[0] = kingX - j;
+                    tempCord[1] = kingY - j;
+                    break;
+                case 3:
+                    tempCord[0] = kingX + j;
+                    tempCord[1] = kingY + j;
+                    break;
+
+                default:
+                    break;
+                }
+
+                simulatedBoardValue = arrCpy[tempCord[1]][tempCord[0]];
+
+                if (boundCheck())
+                {
+                    if (simulatedBoardValue == 0)
+                    {
+                        continue;
+                    }
+                    else if (simulatedBoardValue == 10 - target || simulatedBoardValue == 11 - target)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        // if (non enemy queen or bishop piece found)
+                        break;
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+
+        //if move is made by king only then
+            
+        //check for pawn;
+
+        return false;
+    }
+
+    void setPossibleMove()
+    {
+
+        possibleMoves[possibleMovesIndex][0] = tempCord[0];
+        possibleMoves[possibleMovesIndex][1] = tempCord[1];
+        possibleMovesIndex++;
+    }
+
     bool checkCell()
     {
 
@@ -306,11 +486,16 @@ public:
         return false;
     }
 
+    void prepareChecking()
+    {
+        setTarget();
+        copyArr();
+    }
+
     void pawn(int x, int y)
     {
         int direction = -1;
         int startingYValue = 6;
-        setTarget();
 
         if (board.currentTurn)
         {
@@ -347,7 +532,6 @@ public:
     void rook(int x, int y)
     {
         int i, j;
-        setTarget();
         for (i = 0; i < 4; i++)
         {
             for (j = 1; j < 9; j++)
@@ -395,7 +579,6 @@ public:
         int dx[8] = {2, 2, -2, -2, 1, -1, 1, -1};
         int dy[8] = {1, -1, 1, -1, 2, 2, -2, -2};
         int i;
-        setTarget();
         for (i = 0; i < 8; i++)
         {
             tempCord[0] = x + dx[i];
@@ -410,7 +593,6 @@ public:
     void bishop(int x, int y)
     {
         int i, j;
-        setTarget();
         for (i = 0; i < 4; i++)
         {
             for (j = 1; j < 9; j++)
@@ -464,7 +646,6 @@ public:
         int dx[8] = {0, 0, 1, 1, 1, -1, -1, -1};
         int dy[8] = {1, -1, 0, 1, -1, 0, 1, -1};
         int i;
-        setTarget();
 
         for (i = 0; i < 8; i++)
         {
@@ -479,12 +660,13 @@ public:
 
     bool validate(int oldX, int oldY, int newX, int newY)
     {
-        int selectedPiece = board.valueAt(oldX, oldY);
-
+        int selectedPiece = board.arr[oldY][oldX];
         if (selectedPiece > 6)
         {
             selectedPiece = selectedPiece - 6;
         }
+
+        prepareChecking();
 
         switch (selectedPiece)
         {
@@ -511,7 +693,6 @@ public:
 
         return checkPlayedMove(newX, newY);
     }
-
 };
 
 class InputHandling
