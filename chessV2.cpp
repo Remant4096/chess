@@ -144,38 +144,50 @@ using cordinateArr = std::vector<std::vector<int>>;
 
 struct displayutility
 {
-    std::string p[13] = {" ", "♙", "♖", "♘", "♗", "♕", "♔", "♟", "♜", "♞", "♝", "♛", "♚"};
+    std::string p[13] = {" ", "♟", "♜", "♞", "♝", "♛", "♚", "♟", "♜", "♞", "♝", "♛", "♚"};
+
+    // pallete 1
 
     std::string bgColors[4] = {
-        "\033[47m",  // light square = white bg
-        "\033[42m",  // dark square = green bg
-        "\033[106m", // cursor background = light cyan bg
-        "\033[103m"  // legal move bg = bright yellow bg
+        "\033[48;2;240;217;181m", // light square = classic beige
+        "\033[48;2;181;136;99m",  // dark square = classic brown
+        "\033[48;2;150;200;180m", // cursor = muted teal green
+        "\033[48;2;255;210;100m"  // legal move = warm golden yellow
     };
 
-    std::string whitePieceTextColors[4] = {
-        "\033[97m", // bright white text on light square
-        "\033[97m", // bright white text on dark square
-        "\033[97m", // bright white text on cursor
-        "\033[97m"  // bright white text on legal move highlight
+    std::string whitePieceTextColor = {
+        "\033[38;2;255;255;255m" // pure white
     };
 
-    std::string blackPieceTextColors[4] = {
-        "\033[30m", // black text on light square
-        "\033[30m", // black text on dark square
-        "\033[30m", // black text on cursor
-        "\033[30m"  // black text on legal move bg
+    std::string blackPieceTextColor = {
+        "\033[38;2;0;0;0m" // pure black
     };
 
-    std::string emptyTextColors[4] = {
-        "\033[90m", // dark gray text on light square
-        "\033[90m", // dark gray text on dark square
-        "\033[97m", // bright white text on cursor
-        "\033[30m"  // black text on legal move bg
+    std::string emptyTextColor = {
+        "\033[30m" // black text
     };
+
+    // pallete 2
+
+    // std::string bgColors[4] = {
+    //     "\033[47m",  // light square = white bg
+    //     "\033[42m",  // dark square = green bg
+    //     "\033[106m", // cursor background = light cyan bg
+    //     "\033[103m"  // legal move bg = bright yellow bg
+    // };
+
+    // std::string whitePieceTextColor = {
+    //     "\033[97m"};
+
+    // std::string blackPieceTextColor = {
+    //     "\033[30m"};
+
+    // std::string emptyTextColor = {
+    //     "\033[30m"};
 };
+
 class Board
-{ // Initilazation Movingsystem Display Clear
+{
 public:
     int arr[8][8];
     std::vector<int> whiteKilled;
@@ -235,6 +247,7 @@ public:
 
     bool isLegalSquareCheck(int x, int y)
     {
+
         int i;
         for (i = 0; i < legalMoves.size(); i++)
         {
@@ -283,11 +296,11 @@ public:
                 std::string textColor;
 
                 if (val == 0)
-                    textColor = utility.emptyTextColors[colorIndex];
+                    textColor = utility.emptyTextColor;
                 else if (val <= 6)
-                    textColor = utility.whitePieceTextColors[colorIndex];
+                    textColor = utility.whitePieceTextColor;
                 else
-                    textColor = utility.blackPieceTextColors[colorIndex];
+                    textColor = utility.blackPieceTextColor;
 
                 std::cout << bgColor << textColor << " " << utility.p[val] << " " << RESET;
             }
@@ -1033,6 +1046,7 @@ public:
 
 int main()
 {
+    std::cout << "\033[?25l";
     Game g;
     g.run();
 
