@@ -267,29 +267,39 @@ public:
     }
 };
 
-class MoveValidation
+
+struct DxDy
+{
+    const int knightDx[8] = {2, 2, -2, -2, 1, -1, 1, -1};
+    const int knightDy[8] = {1, -1, 1, -1, 2, 2, -2, -2};
+    const int kingDx[8] = {0, 0, 1, 1, 1, -1, -1, -1};
+    const int kingDy[8] = {1, -1, 0, 1, -1, 0, 1, -1};
+    const int pawnDx[2] = {1, -1};
+};
+
+enum pieces
+{
+    empty,
+    pawn,
+    rook,
+    knight,
+    bishop,
+    queen,
+    king
+};
+
+using cordinateArr = std::vector<std::vector<int>>;
+
+class MoveGeneration
 {
 public:
-    int possibleMoves[28][2];
-    int possibleMovesIndex;
-    int arrCpy[8][8];
-    int tempCord[2];
-    int simulatedTempCord[2];
     Board &board;
+    int tempCord[2];
     int target;
-    int fromX;
-    int fromY;
-    int kingX;
-    int kingY;
-    int i,j;
-    static const int knightDx[8];
-    static const int knightDy[8];
-    static const int kingDx[8];
-    static const int kingDy[8];
-    static const int pawnDy[2];
+    cordinateArr moves;
+    DxDy dxdy;
 
-public:
-    MoveValidation(Board &b) : board(b), possibleMovesIndex(0) {}
+    MoveGeneration(Board &b) : board(b) {};
 
     void setTarget()
     {
@@ -316,22 +326,259 @@ public:
         return false;
     }
 
-    bool checkPlayedMove(int newX, int newY)
+    void setPossibleMove()
     {
-        for (i = 0; i < possibleMovesIndex; i++)
+        moves.push_back({tempCord[0], tempCord[1]});
+    }
+
+    bool checkCell()
+    {
+
+        if (boardValue() == 0)
         {
-            if (possibleMoves[i][0] == newX && possibleMoves[i][1] == newY)
+            setPossibleMove();
+            return true;
+        }
+        else if (boardValue() > 6 - target && boardValue() <= 12 - target)
+        {
+            setPossibleMove();
+        }
+        return false;
+    }
+
+    void pawn(int x, int y)
+    {
+        int direction = -1;
+        int startingYValue = 6;
+
+        if (board.currentTurn)
+        {
+            direction = 1;
+            startingYValue = 1;
+        }
+
+        tempCord[0] = x;
+        tempCord[1] = y + direction;
+        if (boundCheck() && boardValue() == 0)
+        {
+            setPossibleMove();
+
+            if (y == startingYValue)
             {
-                possibleMovesIndex = 0;
-                return true;
+                tempCord[0] = x;
+                tempCord[1] = y + 2 * direction;
+                if (boundCheck() && boardValue() == 0)
+                    setPossibleMove();
             }
         }
-        possibleMovesIndex = 0;
-        return false;
+
+        tempCord[0] = x + 1;
+        tempCord[1] = y + direction;
+        if (boundCheck() && boardValue() > 6 - target && boardValue() <= 12 - target)
+            setPossibleMove();
+
+        tempCord[0] = x - 1;
+        tempCord[1] = y + direction;
+        if (boundCheck() && boardValue() > 6 - target && boardValue() <= 12 - target)
+            setPossibleMove();
+    }
+
+    void rook(int x, int y)
+    {
+        int i, j;
+        for (i = 0; i < 4; i++)
+        {
+            for (j = 1; j < 9; j++)
+            {
+                switch (i)
+                {
+                case 0:
+                    tempCord[0] = x;
+                    tempCord[1] = y + j;
+                    break;
+                case 1:
+                    tempCord[0] = x;
+                    tempCord[1] = y - j;
+                    break;
+                case 2:
+                    tempCord[0] = x + j;
+                    tempCord[1] = y;
+                    break;
+                case 3:
+                    tempCord[0] = x - j;
+                    tempCord[1] = y;
+                    break;
+
+                default:
+                    break;
+                }
+
+                if (boundCheck())
+                {
+                    if (!checkCell())
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    void knight(int x, int y)
+    {
+        int i;
+
+        for (i = 0; i < 8; i++)
+        {
+            tempCord[0] = x + dxdy.knightDx[i];
+            tempCord[1] = y + dxdy.knightDy[i];
+            if (boundCheck())
+            {
+                checkCell();
+            }
+        }
+    }
+
+    void bishop(int x, int y)
+    {
+        int i, j;
+        for (i = 0; i < 4; i++)
+        {
+            for (j = 1; j < 9; j++)
+            {
+                switch (i)
+                {
+                case 0:
+                    tempCord[0] = x + j;
+                    tempCord[1] = y - j;
+                    break;
+                case 1:
+                    tempCord[0] = x - j;
+                    tempCord[1] = y + j;
+                    break;
+                case 2:
+                    tempCord[0] = x - j;
+                    tempCord[1] = y - j;
+                    break;
+                case 3:
+                    tempCord[0] = x + j;
+                    tempCord[1] = y + j;
+                    break;
+
+                default:
+                    break;
+                }
+
+                if (boundCheck())
+                {
+                    if (!checkCell())
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    void queen(int x, int y)
+    {
+        rook(x, y);
+        bishop(x, y);
+    }
+
+    void king(int x, int y)
+    {
+        int i;
+
+        for (i = 0; i < 8; i++)
+        {
+            tempCord[0] = x + dxdy.kingDx[i];
+            tempCord[1] = y + dxdy.kingDy[i];
+            if (boundCheck())
+            {
+                checkCell();
+            }
+        }
+    }
+
+    cordinateArr generateMoves(int pieceX, int pieceY)
+    {
+        setTarget();
+        moves.clear();
+
+        int pieceCode = board.arr[pieceY][pieceX];
+
+        if (pieceCode > 6)
+        {
+            pieceCode = pieceCode - 6;
+        }
+
+        switch (pieceCode)
+        {
+        case pieces::pawn:
+            pawn(pieceX, pieceY);
+            break;
+        case pieces::rook:
+            rook(pieceX, pieceY);
+            break;
+        case pieces::knight:
+            knight(pieceX, pieceY);
+            break;
+        case pieces::bishop:
+            bishop(pieceX, pieceY);
+            break;
+        case pieces::queen:
+            queen(pieceX, pieceY);
+            break;
+        case pieces::king:
+            king(pieceX, pieceY);
+            break;
+
+        default:
+            break;
+        }
+
+        return moves;
+    }
+
+};
+
+class KingSafety
+{
+public:
+    int arrCpy[8][8];
+    int simulatedTempCord[2];
+    Board &board;
+    MoveGeneration moveGeneration;
+    int kingX;
+    int kingY;
+    cordinateArr legalMoves;
+    int target;
+
+    KingSafety(Board &b) : board(b), moveGeneration(b) {}
+
+    void setTarget()
+    {
+        target = 0;
+
+        if (board.currentTurn)
+        {
+            // blacks turn;
+            target = 6;
+        }
     }
 
     void copyArr()
     {
+        int i,j;
         for (i = 0; i < 8; i++)
         {
             for (j = 0; j < 8; j++)
@@ -355,8 +602,9 @@ public:
         return false;
     }
 
-    void simulatedKingXY(int &x, int &y)
+    void simulatedKingXY()
     {
+        int i,j;
         for (i = 0; i < 8; i++)
         {
 
@@ -364,8 +612,8 @@ public:
             {
                 if (arrCpy[i][j] == 6 + target)
                 {
-                    x = j;
-                    y = i;
+                    kingX = j;
+                    kingY = i;
                     return;
                 }
             }
@@ -375,11 +623,14 @@ public:
     bool simulatedKingInCheck(int oldX, int oldY, int x, int y)
     {
 
+        int i,j;
+        DxDy dxdy;
+
         // simulating move in arrCpy;
         copyArr();
         arrCpy[y][x] = arrCpy[oldY][oldX];
         arrCpy[oldY][oldX] = 0;
-        simulatedKingXY(kingX, kingY);
+        simulatedKingXY();
 
         // check for rook and queen
         for (i = 0; i < 4; i++)
@@ -489,8 +740,8 @@ public:
 
             for (i = 0; i < 8; i++)
             {
-                simulatedTempCord[0] = kingX + kingDx[i];
-                simulatedTempCord[1] = kingY + kingDy[i];
+                simulatedTempCord[0] = kingX + dxdy.kingDx[i];
+                simulatedTempCord[1] = kingY + dxdy.kingDy[i];
                 if (simulatedBoundCheck())
                 {
                     if (simulatedBoardValue() == 12 - target)
@@ -507,8 +758,8 @@ public:
 
             for (i = 0; i < 8; i++)
             {
-                simulatedTempCord[0] = kingX + knightDx[i];
-                simulatedTempCord[1] = kingY + knightDy[i];
+                simulatedTempCord[0] = kingX + dxdy.knightDx[i];
+                simulatedTempCord[1] = kingY + dxdy.knightDy[i];
                 if (simulatedBoundCheck())
                 {
                     if (simulatedBoardValue() == 9 - target)
@@ -522,7 +773,6 @@ public:
         // check for pawn;
         {
             int direction = 1;
-            int dx[2] = {-1, 1};
 
             if (board.currentTurn)
             {
@@ -531,7 +781,7 @@ public:
             for (i = 0; i < 2; i++)
             {
 
-                simulatedTempCord[0] = kingX + dx[i];
+                simulatedTempCord[0] = kingX + dxdy.pawnDx[i];
                 simulatedTempCord[1] = kingY + direction;
 
                 if (simulatedBoundCheck())
@@ -547,243 +797,52 @@ public:
         return false;
     }
 
-    void setPossibleMove()
-    {
-        if (!simulatedKingInCheck(fromX, fromY, tempCord[0], tempCord[1]))
-        {
-            possibleMoves[possibleMovesIndex][0] = tempCord[0];
-            possibleMoves[possibleMovesIndex][1] = tempCord[1];
-            possibleMovesIndex++;
-        }
-    }
-
-    bool checkCell()
+    cordinateArr getLegalMoves(int pieceX, int pieceY)
     {
 
-        if (boardValue() == 0)
-        {
-            setPossibleMove();
-            return true;
-        }
-        else if (boardValue() > 6 - target && boardValue() <= 12 - target)
-        {
-            setPossibleMove();
-        }
-        return false;
-    }
+        int i,j;
 
-    void prepareChecking(int oldX, int oldY)
-    {
-        fromX = oldX;
-        fromY = oldY;
+        legalMoves.clear();
+
         setTarget();
-    }
 
-    void pawn(int x, int y)
-    {
-        int direction = -1;
-        int startingYValue = 6;
+        const cordinateArr possibleMoves = moveGeneration.generateMoves(pieceX, pieceY);
 
-        if (board.currentTurn)
+        for (i = 0; i < possibleMoves.size(); i++)
         {
-            direction = 1;
-            startingYValue = 1;
-        }
-
-        tempCord[0] = x;
-        tempCord[1] = y + direction;
-        if (boundCheck() && boardValue() == 0)
-        {
-            setPossibleMove();
-
-            if (y == startingYValue)
+            if (!simulatedKingInCheck(pieceX, pieceY, possibleMoves[i][0], possibleMoves[i][1]))
             {
-                tempCord[0] = x;
-                tempCord[1] = y + 2 * direction;
-                if (boundCheck() && boardValue() == 0)
-                    setPossibleMove();
+                legalMoves.push_back({possibleMoves[i][0], possibleMoves[i][1]});
             }
         }
 
-        tempCord[0] = x + 1;
-        tempCord[1] = y + direction;
-        if (boundCheck() && boardValue() > 6 - target && boardValue() <= 12 - target)
-            setPossibleMove();
-
-        tempCord[0] = x - 1;
-        tempCord[1] = y + direction;
-        if (boundCheck() && boardValue() > 6 - target && boardValue() <= 12 - target)
-            setPossibleMove();
-    }
-
-    void rook(int x, int y)
-    {
-        int i, j;
-        for (i = 0; i < 4; i++)
-        {
-            for (j = 1; j < 9; j++)
-            {
-                switch (i)
-                {
-                case 0:
-                    tempCord[0] = x;
-                    tempCord[1] = y + j;
-                    break;
-                case 1:
-                    tempCord[0] = x;
-                    tempCord[1] = y - j;
-                    break;
-                case 2:
-                    tempCord[0] = x + j;
-                    tempCord[1] = y;
-                    break;
-                case 3:
-                    tempCord[0] = x - j;
-                    tempCord[1] = y;
-                    break;
-
-                default:
-                    break;
-                }
-
-                if (boundCheck())
-                {
-                    if (!checkCell())
-                    {
-                        break;
-                    }
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-    }
-
-    void knight(int x, int y)
-    {
-        int i;
-
-        for (i = 0; i < 8; i++)
-        {
-            tempCord[0] = x + knightDx[i];
-            tempCord[1] = y + knightDy[i];
-            if (boundCheck())
-            {
-                checkCell();
-            }
-        }
-    }
-
-    void bishop(int x, int y)
-    {
-        int i, j;
-        for (i = 0; i < 4; i++)
-        {
-            for (j = 1; j < 9; j++)
-            {
-                switch (i)
-                {
-                case 0:
-                    tempCord[0] = x + j;
-                    tempCord[1] = y - j;
-                    break;
-                case 1:
-                    tempCord[0] = x - j;
-                    tempCord[1] = y + j;
-                    break;
-                case 2:
-                    tempCord[0] = x - j;
-                    tempCord[1] = y - j;
-                    break;
-                case 3:
-                    tempCord[0] = x + j;
-                    tempCord[1] = y + j;
-                    break;
-
-                default:
-                    break;
-                }
-
-                if (boundCheck())
-                {
-                    if (!checkCell())
-                    {
-                        break;
-                    }
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-    }
-
-    void queen(int x, int y)
-    {
-        rook(x, y);
-        bishop(x, y);
-    }
-
-    void king(int x, int y)
-    {
-        int i;
-
-        for (i = 0; i < 8; i++)
-        {
-            tempCord[0] = x + kingDx[i];
-            tempCord[1] = y + kingDy[i];
-            if (boundCheck())
-            {
-                checkCell();
-            }
-        }
-    }
-
-    bool validate(int oldX, int oldY, int newX, int newY)
-    {
-        int selectedPiece = board.arr[oldY][oldX];
-        if (selectedPiece > 6)
-        {
-            selectedPiece = selectedPiece - 6;
-        }
-
-        prepareChecking(oldX, oldY);
-
-        switch (selectedPiece)
-        {
-        case 1:
-            pawn(oldX, oldY);
-            break;
-        case 2:
-            rook(oldX, oldY);
-            break;
-        case 3:
-            knight(oldX, oldY);
-            break;
-        case 4:
-            bishop(oldX, oldY);
-            break;
-        case 5:
-            queen(oldX, oldY);
-            break;
-        case 6:
-            king(oldX, oldY);
-        default:
-            break;
-        }
-
-        return checkPlayedMove(newX, newY);
+        return legalMoves;
     }
 };
 
-const int MoveValidation::knightDx[8] = {2, 2, -2, -2, 1, -1, 1, -1};
-const int MoveValidation::knightDy[8] = {1, -1, 1, -1, 2, 2, -2, -2};
-const int MoveValidation::kingDx[8] = {0, 0, 1, 1, 1, -1, -1, -1};
-const int MoveValidation::kingDy[8] = {1, -1, 0, 1, -1, 0, 1, -1};
-const int MoveValidation::pawnDy[2]={1,-1};
+class MoveValidation
+{
+public:
+    Board &board;
+    KingSafety kingSafety;
+    cordinateArr legalMoves;
+
+    MoveValidation(Board &b) : board(b), kingSafety(b) {}
+
+    bool validate(int fromX, int fromY, int toX, int toY)
+    {
+        legalMoves =kingSafety.getLegalMoves(fromX,fromY);
+        int i;
+
+        for(i=0;i<legalMoves.size();i++){
+            if(legalMoves[i][0] == toX && legalMoves[i][1] == toY){
+                return true;
+            }
+        }
+
+        return false;
+    }
+};
 
 
 class InputHandling
