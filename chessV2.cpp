@@ -153,18 +153,12 @@ struct displayutility
         "\033[103m"  // legal move bg = bright yellow bg
     };
 
-
-std::string whitePieceTextColors[4] = {
-    "\033[97m",  // bright white text on light square
-    "\033[97m",  // bright white text on dark square
-    "\033[97m",  // bright white text on cursor
-    "\033[97m"   // bright white text on legal move highlight
-};
-
-
-
-
-
+    std::string whitePieceTextColors[4] = {
+        "\033[97m", // bright white text on light square
+        "\033[97m", // bright white text on dark square
+        "\033[97m", // bright white text on cursor
+        "\033[97m"  // bright white text on legal move highlight
+    };
 
     std::string blackPieceTextColors[4] = {
         "\033[30m", // black text on light square
@@ -975,6 +969,11 @@ public:
                 else
                 {
                     board.legalMoves = moveValidation.getLegalMoves(currentX, currentY);
+
+                    if (board.legalMoves.empty())
+                    {
+                        cursor.enterCounter = 0;
+                    }
                 }
             }
             else
