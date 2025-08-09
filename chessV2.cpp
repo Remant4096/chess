@@ -6,7 +6,6 @@
 #define RESET "\033[0m"
 #define WHITE "\033[1;97m" // Bright white (solid)
 #define BLACK "\033[0;37m" // Dim gray (transparent)
-#define EMPTY "\033[90m"   // Dark gray for empty squares
 
 class Cursor
 {
@@ -141,6 +140,46 @@ public:
     }
 };
 
+using cordinateArr = std::vector<std::vector<int>>;
+
+struct displayutility
+{
+    std::string p[13] = {" ", "♙", "♖", "♘", "♗", "♕", "♔", "♟", "♜", "♞", "♝", "♛", "♚"};
+
+    std::string bgColors[4] = {
+        "\033[47m",  // light square = white bg
+        "\033[42m",  // dark square = green bg
+        "\033[106m", // cursor background = light cyan bg
+        "\033[103m"  // legal move bg = bright yellow bg
+    };
+
+
+std::string whitePieceTextColors[4] = {
+    "\033[97m",  // bright white text on light square
+    "\033[97m",  // bright white text on dark square
+    "\033[97m",  // bright white text on cursor
+    "\033[97m"   // bright white text on legal move highlight
+};
+
+
+
+
+
+
+    std::string blackPieceTextColors[4] = {
+        "\033[30m", // black text on light square
+        "\033[30m", // black text on dark square
+        "\033[30m", // black text on cursor
+        "\033[30m"  // black text on legal move bg
+    };
+
+    std::string emptyTextColors[4] = {
+        "\033[90m", // dark gray text on light square
+        "\033[90m", // dark gray text on dark square
+        "\033[97m", // bright white text on cursor
+        "\033[30m"  // black text on legal move bg
+    };
+};
 class Board
 { // Initilazation Movingsystem Display Clear
 public:
@@ -149,8 +188,9 @@ public:
     std::vector<int> blackKilled;
     int currentTurn;
     Cursor &cursor;
+    cordinateArr legalMoves;
+    const displayutility utility;
 
-public:
     Board(Cursor &c) : cursor(c), currentTurn(0) {}
 
     void initialize()
@@ -199,55 +239,77 @@ public:
         currentTurn = !currentTurn;
     }
 
+    bool isLegalSquareCheck(int x, int y)
+    {
+        int i;
+        for (i = 0; i < legalMoves.size(); i++)
+        {
+            if (legalMoves[i][0] == x && legalMoves[i][1] == y)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     void display()
     {
-        std::cout << "\033c";
-        // system("clear");
-        std::string p[13] = {" ", "♟", "♜", "♞", "♝", "♛", "♚", "♙", "♖", "♘", "♗", "♕", "♔"};
-        // std::string p[13] = {" ","♙", "♖", "♘", "♗", "♕", "♔", "♟", "♜", "♞", "♝", "♛", "♚"};
-        std::cout << "\n";
+        std::cout << "\033c"; // Clear screen
 
-        // board
         for (int i = 0; i < 8; ++i)
         {
             for (int j = 0; j < 8; ++j)
             {
                 int val = arr[i][j];
+                bool isCursor = (cursor.xCord == j && cursor.yCord == i);
+                bool isLightSquare = ((i + j) % 2 == 0);
+                bool isLegalSquare = isLegalSquareCheck(j, i);
 
-                if (cursor.xCord == j && cursor.yCord == i)
+                int colorIndex;
+
+                if (isLightSquare)
                 {
-                    if (val <= 6)
-                    {
-                        std::cout << "\033[44;97m" << " " << "\033[44;97m" << p[arr[i][j]] << " " << RESET;
-                    }
-                    else
-                    {
-                        std::cout << "\033[44;30m" << " " << "\033[44;30m" << p[arr[i][j]] << " " << RESET;
-                    }
+                    colorIndex = 0;
                 }
                 else
                 {
-                    if (val == 0)
-                        std::cout << " " << EMPTY << "· " << RESET;
-                    else if (val <= 6)
-                        std::cout << " " << WHITE << p[val] << " " << RESET;
-                    else
-                        std::cout << " " << BLACK << p[val] << " " << RESET;
+                    colorIndex = 1;
                 }
-            }
 
+                if (isCursor)
+                {
+                    colorIndex = 2;
+                }
+                else if (isLegalSquare)
+                {
+                    colorIndex = 3;
+                }
+
+                std::string bgColor = utility.bgColors[colorIndex];
+                std::string textColor;
+
+                if (val == 0)
+                    textColor = utility.emptyTextColors[colorIndex];
+                else if (val <= 6)
+                    textColor = utility.whitePieceTextColors[colorIndex];
+                else
+                    textColor = utility.blackPieceTextColors[colorIndex];
+
+                std::cout << bgColor << textColor << " " << utility.p[val] << " " << RESET;
+            }
             std::cout << "\n";
         }
 
-        // player Turn
-
+        // Player turn info
         if (currentTurn == 0)
         {
-            std::cout << WHITE << "\n      White's Turn\n";
+            std::cout << WHITE << "\n      White's Turn\n"
+                      << RESET;
         }
         else
         {
-            std::cout << "\033[1;30m" << "\n      Black's Turn\n";
+            std::cout << BLACK << "\n      Black's Turn\n"
+                      << RESET;
         }
 
         // Captured pieces
@@ -255,18 +317,16 @@ public:
 
         std::cout << WHITE << " White Captures: " << RESET;
         for (int i = 0; i < whiteKilled.size(); i++)
-            std::cout << WHITE << p[whiteKilled.at(i)] << " ";
+            std::cout << WHITE << utility.p[whiteKilled.at(i)] << " ";
         std::cout << "\n";
 
-        std::cout << "\033[1;30m" << " Black Captures: " << RESET;
+        std::cout << BLACK << " Black Captures: " << RESET;
         for (int i = 0; i < blackKilled.size(); i++)
-            std::cout << BLACK << p[blackKilled.at(i)] << " ";
+            std::cout << BLACK << utility.p[blackKilled.at(i)] << " ";
         std::cout << "\n"
-                  << RESET;
-        std::cout << "\n";
+                  << RESET << "\n";
     }
 };
-
 
 struct DxDy
 {
@@ -287,8 +347,6 @@ enum pieces
     queen,
     king
 };
-
-using cordinateArr = std::vector<std::vector<int>>;
 
 class MoveGeneration
 {
@@ -548,7 +606,6 @@ public:
 
         return moves;
     }
-
 };
 
 class KingSafety
@@ -578,7 +635,7 @@ public:
 
     void copyArr()
     {
-        int i,j;
+        int i, j;
         for (i = 0; i < 8; i++)
         {
             for (j = 0; j < 8; j++)
@@ -604,7 +661,7 @@ public:
 
     void simulatedKingXY()
     {
-        int i,j;
+        int i, j;
         for (i = 0; i < 8; i++)
         {
 
@@ -623,7 +680,7 @@ public:
     bool simulatedKingInCheck(int oldX, int oldY, int x, int y)
     {
 
-        int i,j;
+        int i, j;
         DxDy dxdy;
 
         // simulating move in arrCpy;
@@ -800,7 +857,7 @@ public:
     cordinateArr getLegalMoves(int pieceX, int pieceY)
     {
 
-        int i,j;
+        int i, j;
 
         legalMoves.clear();
 
@@ -826,16 +883,26 @@ public:
     Board &board;
     KingSafety kingSafety;
     cordinateArr legalMoves;
-
+    int fromX;
+    int fromY;
     MoveValidation(Board &b) : board(b), kingSafety(b) {}
 
-    bool validate(int fromX, int fromY, int toX, int toY)
+    cordinateArr getLegalMoves(int pieceX, int pieceY)
     {
-        legalMoves =kingSafety.getLegalMoves(fromX,fromY);
+        fromX = pieceX;
+        fromY = pieceY;
+        legalMoves = kingSafety.getLegalMoves(fromX, fromY);
+        return legalMoves;
+    }
+
+    bool validate(int toX, int toY)
+    {
         int i;
 
-        for(i=0;i<legalMoves.size();i++){
-            if(legalMoves[i][0] == toX && legalMoves[i][1] == toY){
+        for (i = 0; i < legalMoves.size(); i++)
+        {
+            if (legalMoves[i][0] == toX && legalMoves[i][1] == toY)
+            {
                 return true;
             }
         }
@@ -843,7 +910,6 @@ public:
         return false;
     }
 };
-
 
 class InputHandling
 {
@@ -888,8 +954,8 @@ public:
     {
         moveX = cursor.xCord;
         moveY = cursor.yCord;
-
-        if (moveValidation.validate(currentX, currentY, moveX, moveY))
+        board.legalMoves.clear();
+        if (moveValidation.validate(moveX, moveY))
         {
             board.moveFromTo(currentX, currentY, moveX, moveY);
         }
@@ -905,6 +971,10 @@ public:
                 if (selectPeice() == false)
                 {
                     cursor.enterCounter = 0;
+                }
+                else
+                {
+                    board.legalMoves = moveValidation.getLegalMoves(currentX, currentY);
                 }
             }
             else
