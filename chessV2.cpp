@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #define RESET "\033[0m"
+#define BLUE "\033[34m"    // Blue color
 #define WHITE "\033[1;97m" // Bright white (solid)
 #define BLACK "\033[0;37m" // Dim gray (transparent)
 
@@ -20,7 +21,7 @@ public:
     bool counterTrigger;
 
 public:
-    Cursor() : xCord(0), yCord(0), enterCounter(0), counterTrigger(false) {}
+    Cursor() : xCord(4), yCord(5), enterCounter(0), counterTrigger(false) {}
 
     void up()
     {
@@ -150,6 +151,9 @@ using cordinateArr = std::vector<std::vector<int>>;
 
 struct displayutility
 {
+
+    const std::string message[5] = {"\n       White's Turn\n ", "\n       Black's Turn\n ", "\n       White Wins\n ", "\n       Black Wins\n ", "\n       DRAW\n "};
+
     const std::string p[13] = {" ", "♟", "♜", "♞", "♝", "♛", "♚", "♟", "♜", "♞", "♝", "♛", "♚"};
 
     const std::string bgColors[2][5] = {
@@ -172,11 +176,11 @@ struct displayutility
             "\033[38;2;180;100;0m"
             //"\033[38;2;242;242;242m"
         },
-        {"\033[38;2;255;255;255m"}
+        {"\033[38;2;180;100;0m"}
 
     };
 
-    const  std::string blackPieceTextColor[2] = {
+    const std::string blackPieceTextColor[2] = {
         {"\033[30m"}, {"\033[38;2;0;0;0m"}
 
     };
@@ -196,9 +200,11 @@ public:
     cordinateArr legalMoves;
     const displayutility utility;
     bool isKinginCheck;
+    bool isCheckMate;
+    bool isDraw;
     int kingX, kingY;
 
-    Board(Cursor &c) : cursor(c), currentTurn(0), isKinginCheck(false) {}
+    Board(Cursor &c) : cursor(c), currentTurn(0), isKinginCheck(false), isCheckMate(false), isDraw(false) {}
 
     void initialize()
     {
@@ -262,7 +268,7 @@ public:
 
     void display()
     {
-        int theme = 0;
+        int theme = 1;
         std::cout << "\033c"; // Clear screen
 
         for (int i = 0; i < 8; ++i)
@@ -289,7 +295,7 @@ public:
                 }
                 else if (isKinginCheck && kingX == j && kingY == i)
                 {
-                        colorIndex = 4;
+                    colorIndex = 4;
                 }
                 else if (isLightSquare)
                 {
@@ -315,16 +321,18 @@ public:
         }
 
         // Player turn info
-        if (currentTurn == 0)
+        if (isCheckMate)
         {
-            std::cout << WHITE << "\n      White's Turn\n"
-                      << RESET;
+            currentTurn = !currentTurn;
+            currentTurn = currentTurn + 2;
         }
-        else
+
+        else if (isDraw)
         {
-            std::cout << BLACK << "\n      Black's Turn\n"
-                      << RESET;
+            currentTurn = 4;
         }
+
+        std::cout << BLUE << utility.message[currentTurn] << RESET;
 
         // Captured pieces
         std::cout << "\n";
@@ -339,7 +347,6 @@ public:
             std::cout << BLACK << utility.p[blackKilled.at(i)] << " ";
         std::cout << "\n"
                   << RESET << "\n";
-        
     }
 };
 
@@ -357,7 +364,7 @@ public:
     bool pieceSelected;
 
 public:
-    InputHandling(Cursor &c, Board &b) : cursor(c), board(b), val(0), moveX(0), moveY(0), currentX(0), currentY(0) , moveSelected(false) {}
+    InputHandling(Cursor &c, Board &b) : cursor(c), board(b), val(0), moveX(0), moveY(0), currentX(0), currentY(0), moveSelected(false) {}
 
     bool selectPeice()
     {
@@ -401,7 +408,7 @@ public:
 
             if (cursor.enterCounter == 1)
             {
-                pieceSelected=selectPeice();
+                pieceSelected = selectPeice();
                 if (pieceSelected == false)
                 {
                     cursor.enterCounter = 0;
@@ -974,10 +981,11 @@ public:
         return legalMoves;
     }
 
-    void kingCordinate(int &x,int &y){
+    void kingCordinate(int &x, int &y)
+    {
         simulatedKingXY();
-        x=king.x;
-        y=king.y; 
+        x = king.x;
+        y = king.y;
     }
 };
 
@@ -987,6 +995,8 @@ public:
     Board &board;
     KingSafety kingSafety;
     cordinateArr legalMoves;
+    cordinateArr piecesPosition;
+    cordinateArr checking;
     int fromX;
     int fromY;
     int kingX;
@@ -1019,6 +1029,40 @@ public:
     bool isCurrentKingInCheck()
     {
         return kingSafety.simulatedKingInCheck(0, 0, 0, 0, true);
+    }
+
+    void getPieces()
+    {
+        piecesPosition.clear();
+        int i, j;
+        int target = board.currentTurn == 1 ? 6 : 0;
+        for (i = 0; i < 8; i++)
+        {
+            for (j = 0; j < 8; j++)
+            {
+                if (board.arr[i][j] > 6 - target && board.arr[i][j] <= 12 - target)
+                {
+                    piecesPosition.push_back({j, i});
+                    std::cout<<j<<" "<<i;
+                }
+            }
+        }
+    }
+
+    bool isMoveAvaliable()
+    {
+        int i;
+        getPieces();
+        for (i = 0; i < piecesPosition.size(); i++)
+        {
+            checking.clear();
+            checking = getLegalMoves(piecesPosition[i][0], piecesPosition[i][1]);
+            if (!checking.empty())
+            {
+                return true;
+            }
+        }
+        return false;
     }
 };
 
@@ -1059,38 +1103,49 @@ public:
         b.isKinginCheck = m.isCurrentKingInCheck();
         if (b.isKinginCheck)
         {
-            m.kingSafety.kingCordinate(b.kingX,b.kingY);
+            m.kingSafety.kingCordinate(b.kingX, b.kingY);
         }
     }
 
-    void handleSelection(){
+    void handleSelection()
+    {
 
-            if(i.pieceSelected){
-                b.legalMoves = m.getLegalMoves(i.currentX, i.currentY);
+        if (i.pieceSelected)
+        {
+            b.legalMoves = m.getLegalMoves(i.currentX, i.currentY);
 
-                if (b.legalMoves.empty())
-                {
-                    c.enterCounter = 0;
-                }
-            }
-
-            if (i.moveSelected)
+            if (b.legalMoves.empty())
             {
+                c.enterCounter = 0;
+            }
+        }
 
-                if (m.validate(i.moveX, i.moveY))
+        if (i.moveSelected)
+        {
+
+            if (m.validate(i.moveX, i.moveY))
+            {
+                b.isKinginCheck = false;
+                b.moveFromTo(i.currentX, i.currentY, i.moveX, i.moveY);
+                //cureent positon in update from MoveFromTO function;
+                kingIncheck();
+                if (b.isKinginCheck)
                 {
-                    b.isKinginCheck = false;
-                    b.moveFromTo(i.currentX, i.currentY, i.moveX, i.moveY);
-                    kingIncheck();
+                    std::cout<<"j";
+                    b.isCheckMate = !m.isMoveAvaliable();
+                }
+                else
+                {
+                    std::cout<<"k";
+                    b.isDraw = !m.isMoveAvaliable();
                 }
             }
-
+        }
     }
 
     void run()
     {
         b.initialize();
-
         while (gameStatus)
         {
             b.display();
@@ -1098,6 +1153,7 @@ public:
             c.updateCursor(ch);
             i.manageInput();
             handleSelection();
+            getch();
         }
     }
 };
