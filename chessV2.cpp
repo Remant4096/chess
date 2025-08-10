@@ -7,6 +7,12 @@
 #define WHITE "\033[1;97m" // Bright white (solid)
 #define BLACK "\033[0;37m" // Dim gray (transparent)
 
+struct cords
+{
+    int x;
+    int y;
+};
+
 class Cursor
 {
 public:
@@ -144,46 +150,39 @@ using cordinateArr = std::vector<std::vector<int>>;
 
 struct displayutility
 {
-    std::string p[13] = {" ", "♟", "♜", "♞", "♝", "♛", "♚", "♟", "♜", "♞", "♝", "♛", "♚"};
+    const std::string p[13] = {" ", "♟", "♜", "♞", "♝", "♛", "♚", "♟", "♜", "♞", "♝", "♛", "♚"};
 
-    // pallete 1
+    const std::string bgColors[2][5] = {
+        {"\033[47m",
+         "\033[42m",
+         "\033[106m",
+         "\033[103m",
+         "\033[48;5;210m"},
 
-    std::string bgColors[4] = {
-        "\033[48;2;240;217;181m", // light square = classic beige
-        "\033[48;2;181;136;99m",  // dark square = classic brown
-        "\033[48;2;150;200;180m", // cursor = muted teal green
-        "\033[48;2;255;210;100m"  // legal move = warm golden yellow
+        {"\033[48;2;240;217;181m",
+         "\033[48;2;181;136;99m",
+         "\033[48;2;150;200;180m",
+         "\033[48;2;255;210;100m",
+         "\033[48;5;210m"}};
+
+    const std::string whitePieceTextColor[2] = {
+        {
+
+            //"\033[38;2;60;90;130m"
+            "\033[38;2;180;100;0m"
+            //"\033[38;2;242;242;242m"
+        },
+        {"\033[38;2;255;255;255m"}
+
     };
 
-    std::string whitePieceTextColor = {
-        "\033[38;2;255;255;255m" // pure white
+    const  std::string blackPieceTextColor[2] = {
+        {"\033[30m"}, {"\033[38;2;0;0;0m"}
+
     };
 
-    std::string blackPieceTextColor = {
-        "\033[38;2;0;0;0m" // pure black
-    };
-
-    std::string emptyTextColor = {
-        "\033[30m" // black text
-    };
-
-    // pallete 2
-
-    // std::string bgColors[4] = {
-    //     "\033[47m",  // light square = white bg
-    //     "\033[42m",  // dark square = green bg
-    //     "\033[106m", // cursor background = light cyan bg
-    //     "\033[103m"  // legal move bg = bright yellow bg
-    // };
-
-    // std::string whitePieceTextColor = {
-    //     "\033[97m"};
-
-    // std::string blackPieceTextColor = {
-    //     "\033[30m"};
-
-    // std::string emptyTextColor = {
-    //     "\033[30m"};
+    const std::string emptyTextColor[2] = {
+        {"\033[30m"}, {"\033[30m"}};
 };
 
 class Board
@@ -196,8 +195,10 @@ public:
     Cursor &cursor;
     cordinateArr legalMoves;
     const displayutility utility;
+    bool isKinginCheck;
+    int kingX, kingY;
 
-    Board(Cursor &c) : cursor(c), currentTurn(0) {}
+    Board(Cursor &c) : cursor(c), currentTurn(0), isKinginCheck(false) {}
 
     void initialize()
     {
@@ -261,27 +262,22 @@ public:
 
     void display()
     {
+        int theme = 0;
         std::cout << "\033c"; // Clear screen
 
         for (int i = 0; i < 8; ++i)
         {
             for (int j = 0; j < 8; ++j)
             {
+
                 int val = arr[i][j];
                 bool isCursor = (cursor.xCord == j && cursor.yCord == i);
                 bool isLightSquare = ((i + j) % 2 == 0);
                 bool isLegalSquare = isLegalSquareCheck(j, i);
+                std::string bgColor;
+                std::string textColor;
 
                 int colorIndex;
-
-                if (isLightSquare)
-                {
-                    colorIndex = 0;
-                }
-                else
-                {
-                    colorIndex = 1;
-                }
 
                 if (isCursor)
                 {
@@ -291,16 +287,27 @@ public:
                 {
                     colorIndex = 3;
                 }
+                else if (isKinginCheck && kingX == j && kingY == i)
+                {
+                        colorIndex = 4;
+                }
+                else if (isLightSquare)
+                {
+                    colorIndex = 0;
+                }
+                else
+                {
+                    colorIndex = 1;
+                }
 
-                std::string bgColor = utility.bgColors[colorIndex];
-                std::string textColor;
+                bgColor = utility.bgColors[theme][colorIndex];
 
                 if (val == 0)
-                    textColor = utility.emptyTextColor;
+                    textColor = utility.emptyTextColor[theme];
                 else if (val <= 6)
-                    textColor = utility.whitePieceTextColor;
+                    textColor = utility.whitePieceTextColor[theme];
                 else
-                    textColor = utility.blackPieceTextColor;
+                    textColor = utility.blackPieceTextColor[theme];
 
                 std::cout << bgColor << textColor << " " << utility.p[val] << " " << RESET;
             }
@@ -332,6 +339,82 @@ public:
             std::cout << BLACK << utility.p[blackKilled.at(i)] << " ";
         std::cout << "\n"
                   << RESET << "\n";
+        
+    }
+};
+
+class InputHandling
+{
+public:
+    int currentX;
+    int currentY;
+    int val;
+    int moveX;
+    int moveY;
+    Cursor &cursor;
+    Board &board;
+    bool moveSelected;
+    bool pieceSelected;
+
+public:
+    InputHandling(Cursor &c, Board &b) : cursor(c), board(b), val(0), moveX(0), moveY(0), currentX(0), currentY(0) , moveSelected(false) {}
+
+    bool selectPeice()
+    {
+        val = board.arr[cursor.yCord][cursor.xCord];
+        if (val == 0)
+        {
+            // if empty selected
+            return false;
+        }
+        // ensuring player select their own peice
+        if (board.currentTurn == 0 && val <= 6)
+        {
+            currentX = cursor.xCord;
+            currentY = cursor.yCord;
+            return true;
+        }
+        else if (board.currentTurn == 1 && val > 6)
+        {
+            currentX = cursor.xCord;
+            currentY = cursor.yCord;
+            return true;
+        }
+        return false;
+    }
+
+    bool selectMove()
+    {
+        moveX = cursor.xCord;
+        moveY = cursor.yCord;
+        board.legalMoves.clear();
+        return true;
+    }
+
+    void manageInput()
+    {
+        moveSelected = false;
+        pieceSelected = false;
+
+        if (cursor.counterTrigger == true)
+        {
+
+            if (cursor.enterCounter == 1)
+            {
+                pieceSelected=selectPeice();
+                if (pieceSelected == false)
+                {
+                    cursor.enterCounter = 0;
+                }
+            }
+            else
+            {
+                moveSelected = selectMove();
+                cursor.enterCounter = 0;
+            }
+
+            cursor.counterTrigger = false;
+        }
     }
 };
 
@@ -622,8 +705,7 @@ public:
     int simulatedTempCord[2];
     Board &board;
     MoveGeneration moveGeneration;
-    int kingX;
-    int kingY;
+    cords king;
     cordinateArr legalMoves;
     int target;
 
@@ -676,15 +758,15 @@ public:
             {
                 if (arrCpy[i][j] == 6 + target)
                 {
-                    kingX = j;
-                    kingY = i;
+                    king.x = j;
+                    king.y = i;
                     return;
                 }
             }
         }
     }
 
-    bool simulatedKingInCheck(int oldX, int oldY, int x, int y)
+    bool simulatedKingInCheck(int oldX, int oldY, int x, int y, bool justCheck = false)
     {
 
         int i, j;
@@ -692,8 +774,17 @@ public:
 
         // simulating move in arrCpy;
         copyArr();
-        arrCpy[y][x] = arrCpy[oldY][oldX];
-        arrCpy[oldY][oldX] = 0;
+
+        if (!justCheck)
+        {
+            arrCpy[y][x] = arrCpy[oldY][oldX];
+            arrCpy[oldY][oldX] = 0;
+        }
+        else
+        {
+            setTarget();
+        }
+
         simulatedKingXY();
 
         // check for rook and queen
@@ -704,20 +795,20 @@ public:
                 switch (i)
                 {
                 case 0:
-                    simulatedTempCord[0] = kingX;
-                    simulatedTempCord[1] = kingY + j;
+                    simulatedTempCord[0] = king.x;
+                    simulatedTempCord[1] = king.y + j;
                     break;
                 case 1:
-                    simulatedTempCord[0] = kingX;
-                    simulatedTempCord[1] = kingY - j;
+                    simulatedTempCord[0] = king.x;
+                    simulatedTempCord[1] = king.y - j;
                     break;
                 case 2:
-                    simulatedTempCord[0] = kingX + j;
-                    simulatedTempCord[1] = kingY;
+                    simulatedTempCord[0] = king.x + j;
+                    simulatedTempCord[1] = king.y;
                     break;
                 case 3:
-                    simulatedTempCord[0] = kingX - j;
-                    simulatedTempCord[1] = kingY;
+                    simulatedTempCord[0] = king.x - j;
+                    simulatedTempCord[1] = king.y;
                     break;
 
                 default:
@@ -755,20 +846,20 @@ public:
                 switch (i)
                 {
                 case 0:
-                    simulatedTempCord[0] = kingX + j;
-                    simulatedTempCord[1] = kingY - j;
+                    simulatedTempCord[0] = king.x + j;
+                    simulatedTempCord[1] = king.y - j;
                     break;
                 case 1:
-                    simulatedTempCord[0] = kingX - j;
-                    simulatedTempCord[1] = kingY + j;
+                    simulatedTempCord[0] = king.x - j;
+                    simulatedTempCord[1] = king.y + j;
                     break;
                 case 2:
-                    simulatedTempCord[0] = kingX - j;
-                    simulatedTempCord[1] = kingY - j;
+                    simulatedTempCord[0] = king.x - j;
+                    simulatedTempCord[1] = king.y - j;
                     break;
                 case 3:
-                    simulatedTempCord[0] = kingX + j;
-                    simulatedTempCord[1] = kingY + j;
+                    simulatedTempCord[0] = king.x + j;
+                    simulatedTempCord[1] = king.y + j;
                     break;
 
                 default:
@@ -804,8 +895,8 @@ public:
 
             for (i = 0; i < 8; i++)
             {
-                simulatedTempCord[0] = kingX + dxdy.kingDx[i];
-                simulatedTempCord[1] = kingY + dxdy.kingDy[i];
+                simulatedTempCord[0] = king.x + dxdy.kingDx[i];
+                simulatedTempCord[1] = king.y + dxdy.kingDy[i];
                 if (simulatedBoundCheck())
                 {
                     if (simulatedBoardValue() == 12 - target)
@@ -822,8 +913,8 @@ public:
 
             for (i = 0; i < 8; i++)
             {
-                simulatedTempCord[0] = kingX + dxdy.knightDx[i];
-                simulatedTempCord[1] = kingY + dxdy.knightDy[i];
+                simulatedTempCord[0] = king.x + dxdy.knightDx[i];
+                simulatedTempCord[1] = king.y + dxdy.knightDy[i];
                 if (simulatedBoundCheck())
                 {
                     if (simulatedBoardValue() == 9 - target)
@@ -845,8 +936,8 @@ public:
             for (i = 0; i < 2; i++)
             {
 
-                simulatedTempCord[0] = kingX + dxdy.pawnDx[i];
-                simulatedTempCord[1] = kingY + direction;
+                simulatedTempCord[0] = king.x + dxdy.pawnDx[i];
+                simulatedTempCord[1] = king.y + direction;
 
                 if (simulatedBoundCheck())
                 {
@@ -882,6 +973,12 @@ public:
 
         return legalMoves;
     }
+
+    void kingCordinate(int &x,int &y){
+        simulatedKingXY();
+        x=king.x;
+        y=king.y; 
+    }
 };
 
 class MoveValidation
@@ -892,6 +989,8 @@ public:
     cordinateArr legalMoves;
     int fromX;
     int fromY;
+    int kingX;
+    int kingY;
     MoveValidation(Board &b) : board(b), kingSafety(b) {}
 
     cordinateArr getLegalMoves(int pieceX, int pieceY)
@@ -916,87 +1015,10 @@ public:
 
         return false;
     }
-};
 
-class InputHandling
-{
-public:
-    int currentX;
-    int currentY;
-    int val;
-    int moveX;
-    int moveY;
-    Cursor &cursor;
-    Board &board;
-    MoveValidation moveValidation;
-
-public:
-    InputHandling(Cursor &c, Board &b) : cursor(c), board(b), val(0), moveValidation(b), moveX(0), moveY(0), currentX(0), currentY(0) {}
-
-    bool selectPeice()
+    bool isCurrentKingInCheck()
     {
-        val = board.arr[cursor.yCord][cursor.xCord];
-        if (val == 0)
-        {
-            // if empty selected
-            return false;
-        }
-        // ensuring player select their own peice
-        if (board.currentTurn == 0 && val <= 6)
-        {
-            currentX = cursor.xCord;
-            currentY = cursor.yCord;
-            return true;
-        }
-        else if (board.currentTurn == 1 && val > 6)
-        {
-            currentX = cursor.xCord;
-            currentY = cursor.yCord;
-            return true;
-        }
-        return false;
-    }
-
-    void selectMove()
-    {
-        moveX = cursor.xCord;
-        moveY = cursor.yCord;
-        board.legalMoves.clear();
-        if (moveValidation.validate(moveX, moveY))
-        {
-            board.moveFromTo(currentX, currentY, moveX, moveY);
-        }
-    }
-
-    void manageInput()
-    {
-        if (cursor.counterTrigger == true)
-        {
-
-            if (cursor.enterCounter == 1)
-            {
-                if (selectPeice() == false)
-                {
-                    cursor.enterCounter = 0;
-                }
-                else
-                {
-                    board.legalMoves = moveValidation.getLegalMoves(currentX, currentY);
-
-                    if (board.legalMoves.empty())
-                    {
-                        cursor.enterCounter = 0;
-                    }
-                }
-            }
-            else
-            {
-                selectMove();
-                cursor.enterCounter = 0;
-            }
-
-            cursor.counterTrigger = false;
-        }
+        return kingSafety.simulatedKingInCheck(0, 0, 0, 0, true);
     }
 };
 
@@ -1018,37 +1040,71 @@ char getch()
     return buf;
 }
 
-class Game
+class GameManager
 {
 private:
     Cursor c;
     Board b;
     InputHandling i;
+    MoveValidation m;
     char ch;
 
 public:
     bool gameStatus;
 
-    Game() : c(), b(c), i(c, b), gameStatus(true) {}
+    GameManager() : c(), b(c), i(c, b), m(b), gameStatus(true) {}
+
+    void kingIncheck()
+    {
+        b.isKinginCheck = m.isCurrentKingInCheck();
+        if (b.isKinginCheck)
+        {
+            m.kingSafety.kingCordinate(b.kingX,b.kingY);
+        }
+    }
+
+    void handleSelection(){
+
+            if(i.pieceSelected){
+                b.legalMoves = m.getLegalMoves(i.currentX, i.currentY);
+
+                if (b.legalMoves.empty())
+                {
+                    c.enterCounter = 0;
+                }
+            }
+
+            if (i.moveSelected)
+            {
+
+                if (m.validate(i.moveX, i.moveY))
+                {
+                    b.isKinginCheck = false;
+                    b.moveFromTo(i.currentX, i.currentY, i.moveX, i.moveY);
+                    kingIncheck();
+                }
+            }
+
+    }
 
     void run()
     {
         b.initialize();
+
         while (gameStatus)
         {
             b.display();
             ch = getch();
             c.updateCursor(ch);
             i.manageInput();
+            handleSelection();
         }
     }
 };
 
 int main()
 {
-    std::cout << "\033[?25l";
-    Game g;
+    GameManager g;
     g.run();
-
     return 0;
 }
