@@ -2,6 +2,7 @@
 #include <vector>
 #include <termios.h>
 #include <unistd.h>
+#include <cstdlib>
 
 #define RESET "\033[0m"
 #define BLUE "\033[34m"    // Blue color
@@ -147,7 +148,6 @@ public:
     }
 };
 
-//
 using cordinateArr = std::vector<std::vector<int>>;
 
 struct displayutility
@@ -190,6 +190,30 @@ struct displayutility
         {"\033[30m"}, {"\033[30m"}};
 };
 
+class sounds{
+    public:
+    void start(){
+        system("aplay sounds/chess_com_start_game.wav &");
+    }
+
+    void move(){
+        system("aplay sounds/chess_com_move_piece.wav &");
+    }
+    void check(){
+        system("aplay sounds/chess_com_check.wav &");
+    }
+    void checkmate(){
+        system("aplay sounds/chess_com_checkmate.wav &");
+    }
+    void stalemate(){
+        system("aplay sounds/chess_com_stalemate.wav &");
+    }
+    void gameOver(){
+         system("aplay sounds/chess_com_game_over.wav &");
+    }
+    
+};
+
 class Board
 {
 public:
@@ -204,6 +228,7 @@ public:
     bool isCheckMate;
     bool isDraw;
     int kingX, kingY;
+    sounds sound;
 
     Board(Cursor &c) : cursor(c), currentTurn(0), isKinginCheck(false), isCheckMate(false), isDraw(false) {}
 
@@ -245,12 +270,17 @@ public:
             {
                 blackKilled.push_back(val);
             }
+
         }
 
         arr[y][x] = arr[oldY][oldX];
         arr[oldY][oldX] = 0;
 
         currentTurn = !currentTurn;
+
+        
+
+              
     }
 
     bool isLegalSquareCheck(int x, int y)
@@ -1094,87 +1124,105 @@ char getch()
 class GameManager
 {
 private:
-    Cursor c;
-    Board b;
-    InputHandling i;
+    Cursor cursor;
+    Board board;
+    InputHandling inputHandling;
     KingSafety kingsafety;
-    MoveValidation m;
+    MoveValidation moveValidation;
+    sounds sound;
     char ch;
 
 public:
     bool gameStatus;
 
-    GameManager() : c(), b(c), i(c, b), kingsafety(b) , m(b,kingsafety), gameStatus(true) {}
+    GameManager() : cursor(), board(cursor), inputHandling(cursor, board), kingsafety(board) , moveValidation(board,kingsafety), gameStatus(true) {}
 
     void kingIncheck()
     {
-        b.isKinginCheck = m.isCurrentKingInCheck();
-        if (b.isKinginCheck)
+        board.isKinginCheck = moveValidation.isCurrentKingInCheck();
+        if (board.isKinginCheck)
         {
-            m.kingSafety.kingCordinate(b.kingX, b.kingY);
+            moveValidation.kingSafety.kingCordinate(board.kingX, board.kingY);
         }
     }
 
     void handleSelection()
     {
 
-        if (i.pieceSelected)
+        if (inputHandling.pieceSelected)
         {
-            b.legalMoves = m.getLegalMoves(i.currentX, i.currentY);
+            board.legalMoves = moveValidation.getLegalMoves(inputHandling.currentX, inputHandling.currentY);
 
-            if (b.legalMoves.empty())
+            if (board.legalMoves.empty())
             {
-                c.enterCounter = 0;
+                cursor.enterCounter = 0;
             }
         }
 
-        if (i.moveSelected)
+        if (inputHandling.moveSelected)
         {
 
-            if (m.validate(i.moveX, i.moveY))
+            if (moveValidation.validate(inputHandling.moveX, inputHandling.moveY))
             {
-                b.isKinginCheck = false;
-                b.moveFromTo(i.currentX, i.currentY, i.moveX, i.moveY);
+                board.isKinginCheck = false;
+                board.moveFromTo(inputHandling.currentX, inputHandling.currentY, inputHandling.moveX, inputHandling.moveY);
                 //cureent positon in updated from MoveFromTo function;
 
                 kingIncheck();
 
-                if (b.isKinginCheck)
+                if (board.isKinginCheck)
                 {
-                    b.isCheckMate = !m.isMoveAvaliable();
+                    board.isCheckMate = !moveValidation.isMoveAvaliable();
                 }
                 else
                 {
-                    b.isDraw = !m.isMoveAvaliable();
-                    if(!b.isDraw){
-                        if(b.whiteKilled.size() == 15 && b.blackKilled.size() == 15){
-                            b.isDraw=true;
+                    board.isDraw = !moveValidation.isMoveAvaliable();
+                    if(!board.isDraw){
+                        if(board.whiteKilled.size() == 15 && board.blackKilled.size() == 15){
+                            board.isDraw=true;
                         }
                     }
                 }
+
+                if(board.isCheckMate){
+                sound.checkmate();
+              }  
+              else if(board.isKinginCheck){
+                sound.check();
+              }
+              else if(board.isDraw)
+              {
+                sound.stalemate();
+              }
+              else{
+                sound.move();
+              }
             }
         }
     }
 
     void updateGameStatus(){
-        if(b.isCheckMate || b.isDraw){
+        if(board.isCheckMate || board.isDraw){
             gameStatus=false;
+            sound.gameOver();
         }
     }
     
     void run()
     {
-        b.initialize();
+        board.initialize();
+
+        sound.start();
         while (gameStatus)
         {
-            b.display();
+            board.display();
             ch = getch();
-            c.updateCursor(ch);
-            i.manageInput();
+            cursor.updateCursor(ch);
+            inputHandling.manageInput();
             handleSelection();
             updateGameStatus();
         }
-        b.display();
+        board.display();
     }
 
 };
