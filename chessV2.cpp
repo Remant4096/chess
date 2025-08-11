@@ -190,30 +190,6 @@ struct displayutility
         {"\033[30m"}, {"\033[30m"}};
 };
 
-class sounds{
-    public:
-    void start(){
-        system("aplay sounds/chess_com_start_game.wav &");
-    }
-
-    void move(){
-        system("aplay sounds/chess_com_move_piece.wav &");
-    }
-    void check(){
-        system("aplay sounds/chess_com_check.wav &");
-    }
-    void checkmate(){
-        system("aplay sounds/chess_com_checkmate.wav &");
-    }
-    void stalemate(){
-        system("aplay sounds/chess_com_stalemate.wav &");
-    }
-    void gameOver(){
-         system("aplay sounds/chess_com_game_over.wav &");
-    }
-    
-};
-
 class Board
 {
 public:
@@ -228,9 +204,9 @@ public:
     bool isCheckMate;
     bool isDraw;
     int kingX, kingY;
-    sounds sound;
+    bool moved;
 
-    Board(Cursor &c) : cursor(c), currentTurn(0), isKinginCheck(false), isCheckMate(false), isDraw(false) {}
+    Board(Cursor &c) : cursor(c), currentTurn(0), isKinginCheck(false), isCheckMate(false), isDraw(false),moved(false) {}
 
     void initialize()
     {
@@ -270,17 +246,13 @@ public:
             {
                 blackKilled.push_back(val);
             }
-
         }
 
         arr[y][x] = arr[oldY][oldX];
         arr[oldY][oldX] = 0;
-
         currentTurn = !currentTurn;
 
-        
-
-              
+        moved=true;
     }
 
     bool isLegalSquareCheck(int x, int y)
@@ -378,6 +350,60 @@ public:
             std::cout << BLACK << utility.p[blackKilled.at(i)] << " ";
         std::cout << "\n"
                   << RESET << "\n";
+    }
+};
+
+class sounds
+{
+public:
+    void start()
+    {
+        system("aplay sounds/chess_com_start_game.wav &");
+    }
+    void move()
+    {
+        system("aplay sounds/chess_com_move_piece.wav &");
+    }
+    void check()
+    {
+        system("aplay sounds/chess_com_check.wav &");
+    }
+    void checkmate()
+    {
+        system("aplay sounds/chess_com_checkmate.wav &");
+    }
+    void stalemate()
+    {
+        system("aplay sounds/chess_com_stalemate.wav &");
+    }
+    void gameOver()
+    {
+        system("aplay sounds/chess_com_game_over.wav &");
+    }
+
+    void manageSound(Board &board)
+    {
+        if(board.moved){
+             if (board.isCheckMate)
+                {
+                    checkmate();
+                }
+                else if (board.isKinginCheck)
+                {
+                    check();
+                }
+                else if (board.isDraw)
+                {
+                    stalemate();
+                }
+                else
+                {
+                    move();
+                }
+            board.moved = false;
+        }
+        
+                
     }
 };
 
@@ -1032,7 +1058,7 @@ public:
     int fromY;
     int kingX;
     int kingY;
-    MoveValidation(Board &b,KingSafety& king) : board(b), kingSafety(king) {}
+    MoveValidation(Board &b, KingSafety &king) : board(b), kingSafety(king) {}
 
     cordinateArr getLegalMoves(int pieceX, int pieceY)
     {
@@ -1067,8 +1093,9 @@ public:
         piecesPosition.clear();
         int i, j;
 
-        int target =6;
-        if(board.currentTurn == 1){
+        int target = 6;
+        if (board.currentTurn == 1)
+        {
             target = 0;
         }
 
@@ -1079,7 +1106,7 @@ public:
                 if (board.arr[i][j] > 6 - target && board.arr[i][j] <= 12 - target)
                 {
                     piecesPosition.push_back({j, i});
-                    std::cout<<j<<" "<<i;
+                    std::cout << j << " " << i;
                 }
             }
         }
@@ -1100,7 +1127,6 @@ public:
         }
         return false;
     }
-
 };
 
 char getch()
@@ -1135,7 +1161,7 @@ private:
 public:
     bool gameStatus;
 
-    GameManager() : cursor(), board(cursor), inputHandling(cursor, board), kingsafety(board) , moveValidation(board,kingsafety), gameStatus(true) {}
+    GameManager() : cursor(), board(cursor), inputHandling(cursor, board), kingsafety(board), moveValidation(board, kingsafety),sound(),gameStatus(true) {}
 
     void kingIncheck()
     {
@@ -1166,7 +1192,7 @@ public:
             {
                 board.isKinginCheck = false;
                 board.moveFromTo(inputHandling.currentX, inputHandling.currentY, inputHandling.moveX, inputHandling.moveY);
-                //cureent positon in updated from MoveFromTo function;
+                // cureent positon in updated from MoveFromTo function;
 
                 kingIncheck();
 
@@ -1177,37 +1203,27 @@ public:
                 else
                 {
                     board.isDraw = !moveValidation.isMoveAvaliable();
-                    if(!board.isDraw){
-                        if(board.whiteKilled.size() == 15 && board.blackKilled.size() == 15){
-                            board.isDraw=true;
+                    if (!board.isDraw)
+                    {
+                        if (board.whiteKilled.size() == 15 && board.blackKilled.size() == 15)
+                        {
+                            board.isDraw = true;
                         }
                     }
                 }
-
-                if(board.isCheckMate){
-                sound.checkmate();
-              }  
-              else if(board.isKinginCheck){
-                sound.check();
-              }
-              else if(board.isDraw)
-              {
-                sound.stalemate();
-              }
-              else{
-                sound.move();
-              }
             }
         }
     }
 
-    void updateGameStatus(){
-        if(board.isCheckMate || board.isDraw){
-            gameStatus=false;
+    void updateGameStatus()
+    {
+        if (board.isCheckMate || board.isDraw)
+        {
+            gameStatus = false;
             sound.gameOver();
         }
     }
-    
+
     void run()
     {
         board.initialize();
@@ -1220,11 +1236,11 @@ public:
             cursor.updateCursor(ch);
             inputHandling.manageInput();
             handleSelection();
+            sound.manageSound(board);
             updateGameStatus();
         }
         board.display();
     }
-
 };
 
 int main()

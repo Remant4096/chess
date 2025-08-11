@@ -1,206 +1,191 @@
-        if (val != 0)
-        {
-            if (val > 6)
-            {
-                whiteKilled.push_back(val);
-            }
-            else
-            {
-                blackKilled.push_back(val);
-            }
+#include <iostream>
+#include <vector>
+#include <termios.h>
+#include <unistd.h>
+#include <cstdlib>
 
-        }
+#define RESET "\033[0m"
+#define BLUE "\033[34m"    // Blue color
+#define WHITE "\033[1;97m" // Bright white (solid)
+#define BLACK "\033[0;37m" // Dim gray (transparent)
 
-        arr[y][x] = arr[oldY][oldX];
-        arr[oldY][oldX] = 0;
-
-        currentTurn = !currentTurn;
-
-        sound.move();
-
-              if(isKinginCheck){
-                sound.check();
-              }  
-              else if(isCheckMate){
-                sound.checkmate();
-              }
-              else if(isDraw)
-              {
-                sound.stalemate();
-              }
-    }
-
-    bool isLegalSquareCheck(int x, int y)
-    {
-
-        int i;
-        for (i = 0; i < legalMoves.size(); i++)
-        {
-            if (legalMoves[i][0] == x && legalMoves[i][1] == y)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    void display()
-    {
-        int theme = 0;
-        std::cout << "\033c"; // Clear screen
-
-        for (int i = 0; i < 8; ++i)
-        {
-            for (int j = 0; j < 8; ++j)
-            {
-
-                int val = arr[i][j];
-                bool isCursor = (cursor.xCord == j && cursor.yCord == i);
-                bool isLightSquare = ((i + j) % 2 == 0);
-                bool isLegalSquare = isLegalSquareCheck(j, i);
-                std::string bgColor;
-                std::string textColor;
-
-                int colorIndex;
-
-                if (isCursor)
-                {
-                    colorIndex = 2;
-                }
-                else if (isLegalSquare)
-                {
-                    colorIndex = 3;
-                }
-                else if (isKinginCheck && kingX == j && kingY == i)
-                {
-                    colorIndex = 4;
-                }
-                else if (isLightSquare)
-                {
-                    colorIndex = 0;
-                }
-                else
-                {
-                    colorIndex = 1;
-                }
-
-                bgColor = utility.bgColors[theme][colorIndex];
-
-                if (val == 0)
-                    textColor = utility.emptyTextColor[theme];
-                else if (val <= 6)
-                    textColor = utility.whitePieceTextColor[theme];
-                else
-                    textColor = utility.blackPieceTextColor[theme];
-
-                std::cout << bgColor << textColor << " " << utility.p[val] << " " << RESET;
-            }
-            std::cout << "\n";
-        }
-
-        // Player turn info
-        if (isCheckMate)
-        {
-            currentTurn = !currentTurn;
-            currentTurn = currentTurn + 2;
-        }
-
-        else if (isDraw)
-        {
-            currentTurn = 4;
-        }
-
-        std::cout << BLUE << utility.message[currentTurn] << RESET;
-
-        // Captured pieces
-        std::cout << "\n";
-
-        std::cout << WHITE << " White Captures: " << RESET;
-        for (int i = 0; i < whiteKilled.size(); i++)
-            std::cout << WHITE << utility.p[whiteKilled.at(i)] << " ";
-        std::cout << "\n";
-
-        std::cout << BLACK << " Black Captures: " << RESET;
-        for (int i = 0; i < blackKilled.size(); i++)
-            std::cout << BLACK << utility.p[blackKilled.at(i)] << " ";
-        std::cout << "\n"
-                  << RESET << "\n";
-    }
+struct cords
+{
+    int x;
+    int y;
 };
 
-class InputHandling
+class Cursor
 {
 public:
-    int currentX;
-    int currentY;
-    int val;
-    int moveX;
-    int moveY;
-    Cursor &cursor;
-    Board &board;
-    bool moveSelected;
-    bool pieceSelected;
+    int xCord, yCord, enterCounter;
+    bool counterTrigger;
 
 public:
-    InputHandling(Cursor &c, Board &b) : cursor(c), board(b), val(0), moveX(0), moveY(0), currentX(0), currentY(0), moveSelected(false) {}
+    Cursor() : xCord(4), yCord(5), enterCounter(0), counterTrigger(false) {}
 
-    bool selectPeice()
+    void up()
     {
-        val = board.arr[cursor.yCord][cursor.xCord];
-        if (val == 0)
+        if (yCord < 7)
         {
-            // if empty selected
-            return false;
+            yCord++;
         }
-        // ensuring player select their own peice
-        if (board.currentTurn == 0 && val <= 6)
+        else if (yCord == 7)
         {
-            currentX = cursor.xCord;
-            currentY = cursor.yCord;
-            return true;
+            yCord = 0;
         }
-        else if (board.currentTurn == 1 && val > 6)
+    }
+    void down()
+    {
+        if (yCord > 0)
         {
-            currentX = cursor.xCord;
-            currentY = cursor.yCord;
-            return true;
+            yCord--;
         }
-        return false;
+        else if (yCord == 0)
+        {
+            yCord = 7;
+        }
+    }
+    void left()
+    {
+        if (xCord > 0)
+        {
+            xCord--;
+        }
+        else if (xCord == 0)
+        {
+            xCord = 7;
+        }
+    }
+    void right()
+    {
+        if (xCord < 7)
+        {
+            xCord++;
+        }
+        else if (xCord == 7)
+        {
+            xCord = 0;
+        }
     }
 
-    bool selectMove()
+    void updateCursor(char ch)
     {
-        moveX = cursor.xCord;
-        moveY = cursor.yCord;
-        board.legalMoves.clear();
-        return true;
-    }
 
-    void manageInput()
-    {
-        moveSelected = false;
-        pieceSelected = false;
-
-        if (cursor.counterTrigger == true)
+        switch (ch)
         {
+        case 'w':
+            down();
+            break;
+        case '8':
+            down();
+            break;
 
-            if (cursor.enterCounter == 1)
-            {
-                pieceSelected = selectPeice();
-                if (pieceSelected == false)
-                {
-                    cursor.enterCounter = 0;
-                }
-            }
-            else
-            {
-                moveSelected = selectMove();
-                cursor.enterCounter = 0;
-            }
+        case 's':
+            up();
+            break;
+        case '2':
+            up();
+            break;
 
-            cursor.counterTrigger = false;
+        case 'a':
+            left();
+            break;
+        case '4':
+            left();
+            break;
+
+        case 'd':
+            right();
+            break;
+        case '6':
+            right();
+            break;
+
+        case 'q':
+            down();
+            left();
+            break;
+        case '7':
+            down();
+            left();
+            break;
+
+        case 'e':
+            down();
+            right();
+            break;
+        case '9':
+            down();
+            right();
+            break;
+
+        case 'c':
+            up();
+            right();
+            break;
+        case '3':
+            up();
+            right();
+            break;
+
+        case 'z':
+            up();
+            left();
+            break;
+        case '1':
+            up();
+            left();
+            break;
+
+        case '\n':
+            counterTrigger = true;
+            enterCounter++;
+            break;
+        default:
+            break;
         }
     }
 };
 
-struct DxDy
+using cordinateArr = std::vector<std::vector<int>>;
+
+struct displayutility
+{
+
+    const std::string message[5] = {"\n       White's Turn\n ", "\n       Black's Turn\n ", "\n       White Wins\n ", "\n       Black Wins\n ", "\n       DRAW\n "};
+
+    const std::string p[13] = {" ", "♟", "♜", "♞", "♝", "♛", "♚", "♟", "♜", "♞", "♝", "♛", "♚"};
+
+    const std::string bgColors[2][5] = {
+        {"\033[47m",
+         "\033[42m",
+         "\033[106m",
+         "\033[103m",
+         "\033[48;5;210m"},
+
+        {"\033[48;2;240;217;181m",
+         "\033[48;2;181;136;99m",
+         "\033[48;2;150;200;180m",
+         "\033[48;2;255;210;100m",
+         "\033[48;5;210m"}};
+
+    const std::string whitePieceTextColor[2] = {
+        {
+
+            //"\033[38;2;60;90;130m"
+            "\033[38;2;180;100;0m"
+            //"\033[38;2;242;242;242m"
+        },
+        {"\033[38;2;180;100;0m"}
+
+    };
+
+    const std::string blackPieceTextColor[2] = {
+        {"\033[30m"}, {"\033[38;2;0;0;0m"}
+
+    };
+
+    const std::string emptyTextColor[2] = {
+        {"\033[30m"}, {"\033[30m"}};
+};
