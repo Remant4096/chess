@@ -147,6 +147,7 @@ public:
     }
 };
 
+//
 using cordinateArr = std::vector<std::vector<int>>;
 
 struct displayutility
@@ -268,7 +269,7 @@ public:
 
     void display()
     {
-        int theme = 1;
+        int theme = 0;
         std::cout << "\033c"; // Clear screen
 
         for (int i = 0; i < 8; ++i)
@@ -993,7 +994,7 @@ class MoveValidation
 {
 public:
     Board &board;
-    KingSafety kingSafety;
+    KingSafety &kingSafety;
     cordinateArr legalMoves;
     cordinateArr piecesPosition;
     cordinateArr checking;
@@ -1001,7 +1002,7 @@ public:
     int fromY;
     int kingX;
     int kingY;
-    MoveValidation(Board &b) : board(b), kingSafety(b) {}
+    MoveValidation(Board &b,KingSafety& king) : board(b), kingSafety(king) {}
 
     cordinateArr getLegalMoves(int pieceX, int pieceY)
     {
@@ -1035,7 +1036,12 @@ public:
     {
         piecesPosition.clear();
         int i, j;
-        int target = board.currentTurn == 1 ? 6 : 0;
+
+        int target =6;
+        if(board.currentTurn == 1){
+            target = 0;
+        }
+
         for (i = 0; i < 8; i++)
         {
             for (j = 0; j < 8; j++)
@@ -1064,6 +1070,7 @@ public:
         }
         return false;
     }
+
 };
 
 char getch()
@@ -1090,13 +1097,14 @@ private:
     Cursor c;
     Board b;
     InputHandling i;
+    KingSafety kingsafety;
     MoveValidation m;
     char ch;
 
 public:
     bool gameStatus;
 
-    GameManager() : c(), b(c), i(c, b), m(b), gameStatus(true) {}
+    GameManager() : c(), b(c), i(c, b), kingsafety(b) , m(b,kingsafety), gameStatus(true) {}
 
     void kingIncheck()
     {
@@ -1127,22 +1135,33 @@ public:
             {
                 b.isKinginCheck = false;
                 b.moveFromTo(i.currentX, i.currentY, i.moveX, i.moveY);
-                //cureent positon in update from MoveFromTO function;
+                //cureent positon in updated from MoveFromTo function;
+
                 kingIncheck();
+
                 if (b.isKinginCheck)
                 {
-                    std::cout<<"j";
                     b.isCheckMate = !m.isMoveAvaliable();
                 }
                 else
                 {
-                    std::cout<<"k";
                     b.isDraw = !m.isMoveAvaliable();
+                    if(!b.isDraw){
+                        if(b.whiteKilled.size() == 15 && b.blackKilled.size() == 15){
+                            b.isDraw=true;
+                        }
+                    }
                 }
             }
         }
     }
 
+    void updateGameStatus(){
+        if(b.isCheckMate || b.isDraw){
+            gameStatus=false;
+        }
+    }
+    
     void run()
     {
         b.initialize();
@@ -1153,9 +1172,11 @@ public:
             c.updateCursor(ch);
             i.manageInput();
             handleSelection();
-            getch();
+            updateGameStatus();
         }
+        b.display();
     }
+
 };
 
 int main()
