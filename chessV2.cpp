@@ -991,11 +991,11 @@ public:
 
         // check for pawn;
         {
-            int direction = 1;
+            int direction = -1;
 
             if (board.currentTurn)
             {
-                direction = -1;
+                direction = 1;
             }
             for (i = 0; i < 2; i++)
             {
