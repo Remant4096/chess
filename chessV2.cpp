@@ -146,8 +146,75 @@ public:
             break;
         }
     }
+
 };
 
+class limitedCursor{
+    public:
+    int xCord, yCord;
+    bool isWhite;
+    int size;
+
+public:
+    limitedCursor() : xCord(4), yCord(5) {}
+
+    void setSize(){
+        if(isWhite){
+            s
+        }
+    }
+
+    void up()
+    {
+        if (yCord < 7)
+        {
+            yCord++;
+        }
+        else if (yCord == 7)
+        {
+            yCord = 0;
+        }
+    }
+    void down()
+    {
+        if (yCord > 0)
+        {
+            yCord--;
+        }
+        else if (yCord == 0)
+        {
+            yCord = 7;
+        }
+    }
+    
+    void updateCursor(char ch)
+    {
+
+        switch (ch)
+        {
+        case 'w':
+            down();
+            break;
+        case '8':
+            down();
+            break;
+
+        case 's':
+            up();
+            break;
+        case '2':
+            up();
+            break;
+
+
+        case '\n':
+            break;
+        default:
+            break;
+        }
+    }
+
+};
 using cordinateArr = std::vector<std::vector<int>>;
 
 struct displayutility
@@ -203,10 +270,11 @@ public:
     bool isKinginCheck;
     bool isCheckMate;
     bool isDraw;
-    int kingX, kingY;
     bool moved;
+    bool pawnPromote;
+    int kingX, kingY;
 
-    Board(Cursor &c) : cursor(c), currentTurn(0), isKinginCheck(false), isCheckMate(false), isDraw(false),moved(false) {}
+    Board(Cursor &c) : cursor(c), currentTurn(0), isKinginCheck(false), isCheckMate(false), isDraw(false), moved(false), pawnPromote(false) {}
 
     void initialize()
     {
@@ -252,7 +320,7 @@ public:
         arr[oldY][oldX] = 0;
         currentTurn = !currentTurn;
 
-        moved=true;
+        moved = true;
     }
 
     bool isLegalSquareCheck(int x, int y)
@@ -358,23 +426,23 @@ class sounds
 public:
     void start()
     {
-        system("aplay sounds/chess_com_start_game.wav &");
+        system("aplay sounds/chess_com_start_game.wav > /dev/null 2>&1 &");
     }
     void move()
     {
-        system("aplay sounds/chess_com_move_piece.wav &");
+        system("aplay sounds/chess_com_move_piece.wav > /dev/null 2>&1 &");
     }
     void check()
     {
-        system("aplay sounds/chess_com_check.wav &");
+        system("aplay sounds/chess_com_check.wav > /dev/null 2>&1 &");
     }
     void checkmate()
     {
-        system("aplay sounds/chess_com_checkmate.wav &");
+        system("aplay sounds/chess_com_checkmate.wav > /dev/null 2>&1 &");
     }
     void stalemate()
     {
-        system("aplay sounds/chess_com_stalemate.wav &");
+        system("aplay sounds/chess_com_stalemate.wav > /dev/null 2>&1 &");
     }
     void gameOver()
     {
@@ -383,27 +451,26 @@ public:
 
     void manageSound(Board &board)
     {
-        if(board.moved){
-             if (board.isCheckMate)
-                {
-                    checkmate();
-                }
-                else if (board.isKinginCheck)
-                {
-                    check();
-                }
-                else if (board.isDraw)
-                {
-                    stalemate();
-                }
-                else
-                {
-                    move();
-                }
+        if (board.moved)
+        {
+            if (board.isCheckMate)
+            {
+                checkmate();
+            }
+            else if (board.isKinginCheck)
+            {
+                check();
+            }
+            else if (board.isDraw)
+            {
+                stalemate();
+            }
+            else
+            {
+                move();
+            }
             board.moved = false;
         }
-        
-                
     }
 };
 
@@ -1054,8 +1121,8 @@ public:
     cordinateArr legalMoves;
     cordinateArr piecesPosition;
     cordinateArr checking;
-    int fromX;
-    int fromY;
+    int fromX; // current x
+    int fromY; // cureent y
     int kingX;
     int kingY;
     MoveValidation(Board &b, KingSafety &king) : board(b), kingSafety(king) {}
@@ -1068,6 +1135,17 @@ public:
         return legalMoves;
     }
 
+    void detectPromotion(int toX, int toY)
+    {
+        if (board.arr[fromY][fromX] == 1 || board.arr[fromY][fromX] == 7)
+        {
+            if (toY == 0 || toY == 7)
+            {
+                board.pawnPromote = true;
+            }
+        }
+    }
+
     bool validate(int toX, int toY)
     {
         int i;
@@ -1076,6 +1154,7 @@ public:
         {
             if (legalMoves[i][0] == toX && legalMoves[i][1] == toY)
             {
+                detectPromotion(toX, toY);
                 return true;
             }
         }
@@ -1161,7 +1240,7 @@ private:
 public:
     bool gameStatus;
 
-    GameManager() : cursor(), board(cursor), inputHandling(cursor, board), kingsafety(board), moveValidation(board, kingsafety),sound(),gameStatus(true) {}
+    GameManager() : cursor(), board(cursor), inputHandling(cursor, board), kingsafety(board), moveValidation(board, kingsafety), sound(), gameStatus(true) {}
 
     void kingIncheck()
     {
@@ -1169,6 +1248,47 @@ public:
         if (board.isKinginCheck)
         {
             moveValidation.kingSafety.kingCordinate(board.kingX, board.kingY);
+        }
+    }
+
+    void promotion(int toX, int toY)
+    {
+        if (board.pawnPromote)
+        {
+            board.pawnPromote = false;
+            int target = board.currentTurn ? 0 : 6 ;
+            char select;
+
+            std::cout << "1:Queen  2:Rook  3:Bishop 4:knight";
+
+            while (true)
+            {
+                select = getch();
+                if (select == '1' || select == '2' || select == '3' || select == '4')
+                {
+                    break;
+                }
+            }
+
+            switch (select)
+            {
+            case '1':
+                board.arr[toY][toX] = pieces::queen + target;
+                break;
+            case '2':
+                board.arr[toY][toX] = pieces::rook + target;
+                break;
+            case '3':
+                board.arr[toY][toX] = pieces::bishop + target;
+                break;
+            case '4':
+                board.arr[toY][toX] = pieces::knight + target;
+                break;
+
+            default:
+                break;
+            }
+
         }
     }
 
@@ -1192,7 +1312,10 @@ public:
             {
                 board.isKinginCheck = false;
                 board.moveFromTo(inputHandling.currentX, inputHandling.currentY, inputHandling.moveX, inputHandling.moveY);
+                
                 // cureent positon in updated from MoveFromTo function;
+
+                promotion(inputHandling.moveX,inputHandling.moveY);
 
                 kingIncheck();
 
