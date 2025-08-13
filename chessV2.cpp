@@ -1295,8 +1295,10 @@ public:
 
                 bgColor = board.utility.bgColors[theme][colorIndex];
                 
+                //since current trun is changed hence this reverse check
                 if(board.currentTurn == 0){
-                    textColor=board.utility.whitePieceTextColor[theme];
+                    textColor=board.utility.blackPieceTextColor[theme];
+                    
                 }
                 else{
                     textColor=board.utility.whitePieceTextColor[theme];
@@ -1357,9 +1359,8 @@ public:
                 if(ch == '\n'){
                     int diffrence = limitedCursor.yCord - limitedCursor.minY;
                     int piecesArr[]={5,2,3,4};
-                    board.arr[toY][toX]=piecesArr[diffrence];
+                    board.arr[toY][toX]=piecesArr[diffrence]+target;
                     board.pawnPromote = false;
-                    kingIncheck();
                     break;
                 }
             }
@@ -1391,7 +1392,7 @@ public:
                 // cureent positon in updated from MoveFromTo function;
 
                 promotion(inputHandling.moveX, inputHandling.moveY);
-
+                
                 kingIncheck();
 
                 if (board.isKinginCheck)
