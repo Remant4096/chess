@@ -146,47 +146,47 @@ public:
             break;
         }
     }
-
 };
 
-class limitedCursor{
-    public:
+class LimitedCursor
+{
+public:
     int xCord, yCord;
     bool isWhite;
+    int minY,maxY;
     int size;
 
 public:
-    limitedCursor() : xCord(4), yCord(5) {}
-
-    void setSize(){
-        if(isWhite){
-            s
+    void setPosition(int x, int y)
+    {
+        
+        if(y == 0){
+            minY = 0;
+            maxY = 3;
         }
+        else{
+            maxY = 7;
+            minY = 4;
+        }
+        xCord=x;
+        yCord=minY;
     }
 
     void up()
     {
-        if (yCord < 7)
+        if (yCord < maxY)
         {
             yCord++;
-        }
-        else if (yCord == 7)
-        {
-            yCord = 0;
         }
     }
     void down()
     {
-        if (yCord > 0)
+        if (yCord > minY)
         {
             yCord--;
         }
-        else if (yCord == 0)
-        {
-            yCord = 7;
-        }
     }
-    
+
     void updateCursor(char ch)
     {
 
@@ -205,16 +205,12 @@ public:
         case '2':
             up();
             break;
-
-
-        case '\n':
-            break;
         default:
             break;
         }
     }
-
 };
+
 using cordinateArr = std::vector<std::vector<int>>;
 
 struct displayutility
@@ -224,18 +220,22 @@ struct displayutility
 
     const std::string p[13] = {" ", "♟", "♜", "♞", "♝", "♛", "♚", "♟", "♜", "♞", "♝", "♛", "♚"};
 
-    const std::string bgColors[2][5] = {
-        {"\033[47m",
-         "\033[42m",
-         "\033[106m",
-         "\033[103m",
-         "\033[48;5;210m"},
+    const std::string bgColors[2][6] = {
+        {"\033[47m",//light square
+         "\033[42m",//dark square;
+         "\033[106m",//cursor color
+         "\033[103m",//legal square;
+         "\033[48;5;210m"//king in check;
+         "\033[48;5;210m"//promtion menu
+        },
 
         {"\033[48;2;240;217;181m",
          "\033[48;2;181;136;99m",
          "\033[48;2;150;200;180m",
          "\033[48;2;255;210;100m",
-         "\033[48;5;210m"}};
+         "\033[48;5;210m"
+         "\033[48;5;210m"
+        }};
 
     const std::string whitePieceTextColor[2] = {
         {
@@ -274,7 +274,7 @@ public:
     bool pawnPromote;
     int kingX, kingY;
 
-    Board(Cursor &c) : cursor(c), currentTurn(0), isKinginCheck(false), isCheckMate(false), isDraw(false), moved(false), pawnPromote(false) {}
+    Board(Cursor &c ) : cursor(c), currentTurn(0), isKinginCheck(false), isCheckMate(false), isDraw(false), moved(false), pawnPromote(false) {}
 
     void initialize()
     {
@@ -419,6 +419,7 @@ public:
         std::cout << "\n"
                   << RESET << "\n";
     }
+
 };
 
 class sounds
@@ -1230,17 +1231,19 @@ class GameManager
 {
 private:
     Cursor cursor;
+    LimitedCursor limitedCursor;
     Board board;
     InputHandling inputHandling;
     KingSafety kingsafety;
     MoveValidation moveValidation;
     sounds sound;
+    
     char ch;
 
 public:
     bool gameStatus;
 
-    GameManager() : cursor(), board(cursor), inputHandling(cursor, board), kingsafety(board), moveValidation(board, kingsafety), sound(), gameStatus(true) {}
+    GameManager() : cursor(), limitedCursor() , board(cursor), inputHandling(cursor, board), kingsafety(board), moveValidation(board, kingsafety), sound(), gameStatus(true) {}
 
     void kingIncheck()
     {
@@ -1251,44 +1254,116 @@ public:
         }
     }
 
+    void pawnPromotionDisplay()
+    {
+        int theme = 0;
+        std::cout << "\033c"; // Clear screen
+
+        for (int i = 0; i < 8; ++i)
+        {
+            for (int j = 0; j < 8; ++j)
+            {
+
+                int val = board.arr[i][j];
+                bool isCursor = (limitedCursor.xCord == j && limitedCursor.yCord == i);
+                bool isLightSquare = ((i + j) % 2 == 0);
+                std::string bgColor;
+                std::string textColor;
+                std::string pieces[4]={"♛","♜", "♞", "♝"};
+
+                int colorIndex;
+
+                if (isLightSquare)
+                {
+                    colorIndex = 0;
+                }
+                else
+                {
+                    colorIndex = 1;
+                }
+
+                //if i in promotion menu
+                if(j == limitedCursor.xCord && i >=limitedCursor.minY && i<=limitedCursor.maxY ){ 
+
+                if (isCursor)
+                {
+                    colorIndex = 2;
+                }
+                else{
+                    colorIndex = 6;
+                }
+
+                bgColor = board.utility.bgColors[theme][colorIndex];
+                
+                if(board.currentTurn == 0){
+                    textColor=board.utility.whitePieceTextColor[theme];
+                }
+                else{
+                    textColor=board.utility.whitePieceTextColor[theme];
+                }
+
+                 std::cout << bgColor << textColor << " " << pieces[i-limitedCursor.minY]<< " " << RESET;
+
+                }
+                else{
+
+                    bgColor = board.utility.bgColors[theme][colorIndex];
+    
+                    if (val == 0)
+                        textColor = board.utility.emptyTextColor[theme];
+                    else if (val <= 6)
+                        textColor = board.utility.whitePieceTextColor[theme];
+                    else
+                        textColor = board.utility.blackPieceTextColor[theme];
+    
+                    std::cout << bgColor << textColor << " " << board.utility.p[val] << " " << RESET;
+                }
+            }
+            std::cout << "\n";
+        }
+
+        // Player turn info
+
+        std::cout << BLUE << board.utility.message[board.currentTurn] << RESET;
+
+        // Captured pieces
+        std::cout << "\n";
+
+        std::cout << WHITE << " White Captures: " << RESET;
+        for (int i = 0; i < board.whiteKilled.size(); i++)
+            std::cout << WHITE << board.utility.p[board.whiteKilled.at(i)] << " ";
+        std::cout << "\n";
+
+        std::cout << BLACK << " Black Captures: " << RESET;
+        for (int i = 0; i < board.blackKilled.size(); i++)
+            std::cout << BLACK << board.utility.p[board.blackKilled.at(i)] << " ";
+        std::cout << "\n"
+                  << RESET << "\n";
+    }
+
     void promotion(int toX, int toY)
     {
         if (board.pawnPromote)
         {
-            board.pawnPromote = false;
-            int target = board.currentTurn ? 0 : 6 ;
-            char select;
-
-            std::cout << "1:Queen  2:Rook  3:Bishop 4:knight";
-
+            int target = board.currentTurn ? 0 : 6;
+            char ch;
+            limitedCursor.setPosition(toX,toY);
+            
             while (true)
             {
-                select = getch();
-                if (select == '1' || select == '2' || select == '3' || select == '4')
-                {
+                pawnPromotionDisplay();
+                ch=getch();
+                limitedCursor.updateCursor(ch);
+                if(ch == '\n'){
+                    int diffrence = limitedCursor.yCord - limitedCursor.minY;
+                    int piecesArr[]={5,2,3,4};
+                    board.arr[toY][toX]=piecesArr[diffrence];
+                    board.pawnPromote = false;
+                    kingIncheck();
                     break;
                 }
             }
-
-            switch (select)
-            {
-            case '1':
-                board.arr[toY][toX] = pieces::queen + target;
-                break;
-            case '2':
-                board.arr[toY][toX] = pieces::rook + target;
-                break;
-            case '3':
-                board.arr[toY][toX] = pieces::bishop + target;
-                break;
-            case '4':
-                board.arr[toY][toX] = pieces::knight + target;
-                break;
-
-            default:
-                break;
-            }
-
+            
         }
     }
 
@@ -1312,10 +1387,10 @@ public:
             {
                 board.isKinginCheck = false;
                 board.moveFromTo(inputHandling.currentX, inputHandling.currentY, inputHandling.moveX, inputHandling.moveY);
-                
+
                 // cureent positon in updated from MoveFromTo function;
 
-                promotion(inputHandling.moveX,inputHandling.moveY);
+                promotion(inputHandling.moveX, inputHandling.moveY);
 
                 kingIncheck();
 
