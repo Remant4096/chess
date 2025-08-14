@@ -447,7 +447,7 @@ public:
     }
     void gameOver()
     {
-        system("aplay sounds/chess_com_game_over.wav &");
+        system("aplay sounds/chess_com_game_over.wav > /dev/null 2>&1 &");
     }
 
     void manageSound(Board &board)
