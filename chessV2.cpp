@@ -813,7 +813,7 @@ public:
         }
 
         // castling logic
-        if (!kingRookMoved[setKing][0])
+        if (!kingRookMoved[setKing][0] && !board.isKinginCheck)
         {
             // check for king side rook moved x++
             if (!kingRookMoved[setKing][1] && board.arr[7*(1-setKing)][7] == 2 + target)
@@ -1147,10 +1147,34 @@ public:
 
         for (i = 0; i < possibleMoves.size(); i++)
         {
-            if (!simulatedKingInCheck(pieceX, pieceY, possibleMoves[i][0], possibleMoves[i][1]))
+            if ((board.arr[pieceY][pieceX] == 6 + target) && (possibleMoves[i][0] - pieceX == 2 || possibleMoves[i][0] - pieceX == -2))
             {
-                legalMoves.push_back({possibleMoves[i][0], possibleMoves[i][1]});
+                bool val1, val2;
+                if (pieceX - possibleMoves[i][0] == 2)
+                {
+                    val1 = simulatedKingInCheck(pieceX, pieceY, pieceX - 1, possibleMoves[i][1]);
+                    val2 = simulatedKingInCheck(pieceX, pieceY, pieceX - 2, possibleMoves[i][1]);
+                }
+                else
+                {
+                    val1 = simulatedKingInCheck(pieceX, pieceY, pieceX + 1, possibleMoves[i][1]);
+                    val2 = simulatedKingInCheck(pieceX, pieceY, pieceX + 2, possibleMoves[i][1]);
+                }
+
+                if(!(val1 || val2)){
+                    legalMoves.push_back({possibleMoves[i][0], possibleMoves[i][1]});
+                }
+                
             }
+            else{
+
+                if (!simulatedKingInCheck(pieceX, pieceY, possibleMoves[i][0], possibleMoves[i][1]))
+                {
+    
+                    legalMoves.push_back({possibleMoves[i][0], possibleMoves[i][1]});
+                }
+            }
+            
         }
 
         return legalMoves;
@@ -1181,6 +1205,7 @@ public:
 
     MoveValidation(Board &b, MoveGeneration &m, KingSafety &king) : board(b), moveGeneration(m), kingSafety(king) {}
 
+    //this is called when a piece is selected
     cordinateArr getLegalMoves(int pieceX, int pieceY)
     {
         fromX = pieceX;
@@ -1308,6 +1333,7 @@ public:
         }
         return false;
     }
+
 };
 
 char getch()
