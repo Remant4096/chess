@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <cstdlib>
 
-#define RESET "\033[0m"
+#define RESET "\033[0m"    // Reset Ansi Sequence
 #define BLUE "\033[34m"    // Blue color
 #define WHITE "\033[1;97m" // Bright white (solid)
 #define BLACK "\033[0;37m" // Dim gray (transparent)
@@ -153,23 +153,25 @@ class LimitedCursor
 public:
     int xCord, yCord;
     bool isWhite;
-    int minY,maxY;
+    int minY, maxY;
     int size;
 
 public:
     void setPosition(int x, int y)
     {
-        
-        if(y == 0){
+
+        if (y == 0)
+        {
             minY = 0;
             maxY = 3;
         }
-        else{
+        else
+        {
             maxY = 7;
             minY = 4;
         }
-        xCord=x;
-        yCord=minY;
+        xCord = x;
+        yCord = minY;
     }
 
     void up()
@@ -221,12 +223,13 @@ struct displayutility
     const std::string p[13] = {" ", "♟", "♜", "♞", "♝", "♛", "♚", "♟", "♜", "♞", "♝", "♛", "♚"};
 
     const std::string bgColors[2][6] = {
-        {"\033[47m",//light square
-         "\033[42m",//dark square;
-         "\033[106m",//cursor color
-         "\033[103m",//legal square;
-         "\033[48;5;210m"//king in check;
-         "\033[48;5;210m"//promtion menu
+        {
+            "\033[47m",      // light square
+            "\033[42m",      // dark square;
+            "\033[106m",     // cursor color
+            "\033[103m",     // legal square;
+            "\033[48;5;210m" // king in check;
+            "\033[48;5;210m" // promtion menu
         },
 
         {"\033[48;2;240;217;181m",
@@ -234,8 +237,7 @@ struct displayutility
          "\033[48;2;150;200;180m",
          "\033[48;2;255;210;100m",
          "\033[48;5;210m"
-         "\033[48;5;210m"
-        }};
+         "\033[48;5;210m"}};
 
     const std::string whitePieceTextColor[2] = {
         {
@@ -273,8 +275,9 @@ public:
     bool moved;
     bool pawnPromote;
     int kingX, kingY;
+    bool castling;
 
-    Board(Cursor &c ) : cursor(c), currentTurn(0), isKinginCheck(false), isCheckMate(false), isDraw(false), moved(false), pawnPromote(false) {}
+    Board(Cursor &c) : cursor(c), currentTurn(0), isKinginCheck(false), isCheckMate(false), isDraw(false), moved(false), pawnPromote(false), castling(false) {}
 
     void initialize()
     {
@@ -319,6 +322,24 @@ public:
         arr[y][x] = arr[oldY][oldX];
         arr[oldY][oldX] = 0;
         currentTurn = !currentTurn;
+
+        if (castling)
+        {
+            castling = false;
+
+            if (oldX - x == 2)
+            {
+                // queen side
+                arr[y][x + 1] = arr[y][0];
+                arr[y][0] = 0;
+            }
+            else
+            {
+                // king side
+                arr[y][x - 1] = arr[y][7];
+                arr[y][7] = 0;
+            }
+        }
 
         moved = true;
     }
@@ -419,7 +440,6 @@ public:
         std::cout << "\n"
                   << RESET << "\n";
     }
-
 };
 
 class sounds
@@ -576,18 +596,22 @@ public:
     Board &board;
     int tempCord[2];
     int target;
+    int setKing;
     cordinateArr moves;
     DxDy dxdy;
+    bool kingRookMoved[2][3];
 
-    MoveGeneration(Board &b) : board(b) {};
+    MoveGeneration(Board &b) : board(b), kingRookMoved{{false, false, false}, {false, false, false}} {}
 
     void setTarget()
     {
         target = 0;
+        setKing = 0;
 
         if (board.currentTurn)
         {
             // blacks turn;
+            setKing = 1;
             target = 6;
         }
     }
@@ -787,6 +811,32 @@ public:
                 checkCell();
             }
         }
+
+        // castling logic
+        if (!kingRookMoved[setKing][0])
+        {
+            // check for king side rook moved x++
+            if (!kingRookMoved[setKing][1] && board.arr[7*(1-setKing)][7] == 2 + target)
+            {
+                if (board.arr[y][x + 1] == 0 && board.arr[y][x + 2] == 0)
+                {
+                    tempCord[0] = x + 2;
+                    tempCord[1] = y;
+                    setPossibleMove();
+                }
+            }
+
+            // chcek queen side rook moved x--
+            if (!kingRookMoved[setKing][2]  && board.arr[7*(1-setKing)][0] == 2 + target)
+            {
+                if (board.arr[y][x - 1] == 0 && board.arr[y][x - 2] == 0 && board.arr[y][x - 3] == 0)
+                {
+                    tempCord[0] = x - 2;
+                    tempCord[1] = y;
+                    setPossibleMove();
+                }
+            }
+        }
     }
 
     cordinateArr generateMoves(int pieceX, int pieceY)
@@ -836,12 +886,12 @@ public:
     int arrCpy[8][8];
     int simulatedTempCord[2];
     Board &board;
-    MoveGeneration moveGeneration;
+    MoveGeneration &moveGeneration;
     cords king;
     cordinateArr legalMoves;
     int target;
 
-    KingSafety(Board &b) : board(b), moveGeneration(b) {}
+    KingSafety(Board &b, MoveGeneration &m) : board(b), moveGeneration(m) {}
 
     void setTarget()
     {
@@ -1108,6 +1158,7 @@ public:
 
     void kingCordinate(int &x, int &y)
     {
+
         simulatedKingXY();
         x = king.x;
         y = king.y;
@@ -1118,6 +1169,7 @@ class MoveValidation
 {
 public:
     Board &board;
+    MoveGeneration &moveGeneration;
     KingSafety &kingSafety;
     cordinateArr legalMoves;
     cordinateArr piecesPosition;
@@ -1126,7 +1178,8 @@ public:
     int fromY; // cureent y
     int kingX;
     int kingY;
-    MoveValidation(Board &b, KingSafety &king) : board(b), kingSafety(king) {}
+
+    MoveValidation(Board &b, MoveGeneration &m, KingSafety &king) : board(b), moveGeneration(m), kingSafety(king) {}
 
     cordinateArr getLegalMoves(int pieceX, int pieceY)
     {
@@ -1147,6 +1200,51 @@ public:
         }
     }
 
+    bool detectCastling(int toX, int toY)
+    {
+
+        if (board.arr[fromY][fromX] == 6 || board.arr[fromY][fromX] == 12)
+        {
+            if (toX - fromX == 2 || toX - fromX == -2)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    void updateCastlingCondition(int toX, int toY)
+    {
+        if (board.arr[fromY][fromX] == 6)
+        {
+            //white king
+            moveGeneration.kingRookMoved[0][0]=true;
+        }
+        else if(board.arr[fromY][fromX] == 12){
+            //black king
+            moveGeneration.kingRookMoved[1][0]=true;
+        }
+
+        if(board.arr[fromY][fromX] == 2)
+        {
+            if(fromX == 0){
+                moveGeneration.kingRookMoved[0][2]=true;
+            }
+            else{
+                moveGeneration.kingRookMoved[0][1]=true;
+            }
+        }
+        else if(board.arr[fromY][fromX] == 8){
+             if(fromX == 0 ){
+                moveGeneration.kingRookMoved[1][2]=true;
+            }
+            else{
+                moveGeneration.kingRookMoved[1][1]=true;
+            }
+        }
+    }
+
     bool validate(int toX, int toY)
     {
         int i;
@@ -1155,7 +1253,10 @@ public:
         {
             if (legalMoves[i][0] == toX && legalMoves[i][1] == toY)
             {
+
+                updateCastlingCondition(toX, toY);
                 detectPromotion(toX, toY);
+                board.castling = detectCastling(toX, toY);
                 return true;
             }
         }
@@ -1234,16 +1335,17 @@ private:
     LimitedCursor limitedCursor;
     Board board;
     InputHandling inputHandling;
+    MoveGeneration moveGeneration;
     KingSafety kingsafety;
     MoveValidation moveValidation;
     sounds sound;
-    
+
     char ch;
 
 public:
     bool gameStatus;
 
-    GameManager() : cursor(), limitedCursor() , board(cursor), inputHandling(cursor, board), kingsafety(board), moveValidation(board, kingsafety), sound(), gameStatus(true) {}
+    GameManager() : cursor(), limitedCursor(), board(cursor), inputHandling(cursor, board), moveGeneration(board), kingsafety(board, moveGeneration), moveValidation(board,moveGeneration,kingsafety), sound(), gameStatus(true) {}
 
     void kingIncheck()
     {
@@ -1269,7 +1371,7 @@ public:
                 bool isLightSquare = ((i + j) % 2 == 0);
                 std::string bgColor;
                 std::string textColor;
-                std::string pieces[4]={"♛","♜", "♞", "♝"};
+                std::string pieces[4] = {"♛", "♜", "♞", "♝"};
 
                 int colorIndex;
 
@@ -1282,42 +1384,45 @@ public:
                     colorIndex = 1;
                 }
 
-                //if i in promotion menu
-                if(j == limitedCursor.xCord && i >=limitedCursor.minY && i<=limitedCursor.maxY ){ 
-
-                if (isCursor)
+                // if i in promotion menu
+                if (j == limitedCursor.xCord && i >= limitedCursor.minY && i <= limitedCursor.maxY)
                 {
-                    colorIndex = 2;
-                }
-                else{
-                    colorIndex = 6;
-                }
 
-                bgColor = board.utility.bgColors[theme][colorIndex];
-                
-                //since current trun is changed hence this reverse check
-                if(board.currentTurn == 0){
-                    textColor=board.utility.blackPieceTextColor[theme];
-                    
-                }
-                else{
-                    textColor=board.utility.whitePieceTextColor[theme];
-                }
-
-                 std::cout << bgColor << textColor << " " << pieces[i-limitedCursor.minY]<< " " << RESET;
-
-                }
-                else{
+                    if (isCursor)
+                    {
+                        colorIndex = 2;
+                    }
+                    else
+                    {
+                        colorIndex = 6;
+                    }
 
                     bgColor = board.utility.bgColors[theme][colorIndex];
-    
+
+                    // since current trun is changed hence this reverse check
+                    if (board.currentTurn == 0)
+                    {
+                        textColor = board.utility.blackPieceTextColor[theme];
+                    }
+                    else
+                    {
+                        textColor = board.utility.whitePieceTextColor[theme];
+                    }
+
+                    std::cout << bgColor << textColor << " " << pieces[i - limitedCursor.minY] << " " << RESET;
+                }
+                else
+                {
+
+                    bgColor = board.utility.bgColors[theme][colorIndex];
+
                     if (val == 0)
                         textColor = board.utility.emptyTextColor[theme];
                     else if (val <= 6)
                         textColor = board.utility.whitePieceTextColor[theme];
                     else
                         textColor = board.utility.blackPieceTextColor[theme];
-    
+
                     std::cout << bgColor << textColor << " " << board.utility.p[val] << " " << RESET;
                 }
             }
@@ -1349,22 +1454,22 @@ public:
         {
             int target = board.currentTurn ? 0 : 6;
             char ch;
-            limitedCursor.setPosition(toX,toY);
-            
+            limitedCursor.setPosition(toX, toY);
+
             while (true)
             {
                 pawnPromotionDisplay();
-                ch=getch();
+                ch = getch();
                 limitedCursor.updateCursor(ch);
-                if(ch == '\n'){
+                if (ch == '\n')
+                {
                     int diffrence = limitedCursor.yCord - limitedCursor.minY;
-                    int piecesArr[]={5,2,3,4};
-                    board.arr[toY][toX]=piecesArr[diffrence]+target;
+                    int piecesArr[] = {5, 2, 3, 4};
+                    board.arr[toY][toX] = piecesArr[diffrence] + target;
                     board.pawnPromote = false;
                     break;
                 }
             }
-            
         }
     }
 
@@ -1392,7 +1497,7 @@ public:
                 // cureent positon in updated from MoveFromTo function;
 
                 promotion(inputHandling.moveX, inputHandling.moveY);
-                
+
                 kingIncheck();
 
                 if (board.isKinginCheck)
