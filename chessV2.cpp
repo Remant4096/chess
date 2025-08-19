@@ -1566,7 +1566,7 @@ public:
 
     void getTheme()
     {
-        std::ifstream inFile("theme.txt");
+        std::ifstream inFile("files/theme.txt");
         if (!inFile)
         {
             std::cerr << "Error opening file for reading";
@@ -1599,7 +1599,7 @@ public:
     void displayInstructions()
     {
         system("clear");
-        std::ifstream file("instructions.txt");
+        std::ifstream file("files/instructions.txt");
         if (!file)
         {
             std::cerr << "Error: Could not open instructions.txt\n";
@@ -1619,7 +1619,7 @@ public:
 
     void saveTheme()
     {
-        std::ofstream outFile("theme.txt");
+        std::ofstream outFile("files/theme.txt");
         if (!outFile)
         {
             std::cerr << "Error opening file for writing\n";
@@ -1664,7 +1664,7 @@ public:
 };
 
 void startMenuSong() {
-    system("nohup aplay -q menusong.wav >/dev/null 2>&1 & echo $! > /tmp/menusong.pid");
+    system("nohup aplay -q sounds/menusong.wav >/dev/null 2>&1 & echo $! > /tmp/menusong.pid");
 }
 
 void endMenuSong() {
