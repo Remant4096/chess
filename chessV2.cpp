@@ -1663,7 +1663,6 @@ public:
     }
 };
 
-
 void startMenuSong() {
     system("nohup aplay -q menusong.wav >/dev/null 2>&1 & echo $! > /tmp/menusong.pid");
 }
