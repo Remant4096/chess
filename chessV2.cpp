@@ -227,41 +227,40 @@ struct displayutility
 
     const std::string p[13] = {" ", "♟", "♜", "♞", "♝", "♛", "♚", "♟", "♜", "♞", "♝", "♛", "♚"};
 
-    const std::string bgColors[2][6] = {
-        {
-            "\033[47m",      // light square
-            "\033[42m",      // dark square;
-            "\033[106m",     // cursor color
-            "\033[103m",     // legal square;
-            "\033[48;5;210m" // king in check;
-            "\033[48;5;210m" // promtion menu
-        },
+ const std::string bgColors[5][7] = {
+    {
+     "\033[47m", "\033[42m", "\033[106m", "\033[103m", "\033[48;5;210m", "\033[48;5;210m", "\033[48;5;214m"},
+    {
+     "\033[48;2;240;217;181m", "\033[48;2;181;136;99m", "\033[48;2;150;200;180m",
+     "\033[48;2;255;210;100m", "\033[48;5;210m", "\033[48;5;210m", "\033[48;2;255;200;150m"},
+    {
+     "\033[48;2;200;200;255m", "\033[48;2;150;150;250m", "\033[48;2;220;180;255m",
+     "\033[48;2;180;220;255m", "\033[48;2;255;150;200m", "\033[48;2;255;200;220m", "\033[48;2;100;150;255m"},
+    {
+     "\033[48;2;220;255;220m", "\033[48;2;100;200;100m", "\033[48;2;180;255;180m",
+     "\033[48;2;150;255;150m", "\033[48;2;255;180;180m", "\033[48;2;200;255;200m", "\033[48;2;180;255;150m"},
+    {
+     "\033[48;2;255;230;180m", "\033[48;2;0;150;150m", "\033[48;2;255;200;150m",
+     "\033[48;2;150;255;250m", "\033[48;2;255;150;100m", "\033[48;2;255;210;180m", "\033[48;2;255;200;50m"}
+};
 
-        {"\033[48;2;240;217;181m",
-         "\033[48;2;181;136;99m",
-         "\033[48;2;150;200;180m",
-         "\033[48;2;255;210;100m",
-         "\033[48;5;210m"
-         "\033[48;5;210m"}};
+const std::string whitePieceTextColor[5] = {
+    "\033[38;2;180;100;0m",
+    "\033[38;2;180;100;0m",
+    "\033[38;2;255;255;255m",
+    "\033[38;2;0;150;0m",
+    "\033[38;2;255;140;0m"
+};
 
-    const std::string whitePieceTextColor[2] = {
-        {
+const std::string blackPieceTextColor[5] = {
+    "\033[30m", "\033[30m", "\033[30m", "\033[30m", "\033[30m"
+};
 
-            //"\033[38;2;60;90;130m"
-            "\033[38;2;180;100;0m"
-            //"\033[38;2;242;242;242m"
-        },
-        {"\033[38;2;180;100;0m"}
+const std::string emptyTextColor[5] = {
+    "\033[30m", "\033[30m", "\033[30m", "\033[30m", "\033[30m"
+};
 
-    };
 
-    const std::string blackPieceTextColor[2] = {
-        {"\033[30m"}, {"\033[38;2;0;0;0m"}
-
-    };
-
-    const std::string emptyTextColor[2] = {
-        {"\033[30m"}, {"\033[30m"}};
 };
 
 class Board
@@ -284,7 +283,7 @@ public:
     int theme;
     int totalTheme;
 
-    Board(Cursor &c) : cursor(c), currentTurn(0), isKinginCheck(false), isCheckMate(false), isDraw(false), moved(false), pawnPromote(false), castling(false), theme(0), totalTheme(2) {}
+    Board(Cursor &c) : cursor(c), currentTurn(0), isKinginCheck(false), isCheckMate(false), isDraw(false), moved(false), pawnPromote(false), castling(false), theme(0), totalTheme(5) {}
 
     void initialize()
     {
@@ -1395,7 +1394,7 @@ public:
 
     void pawnPromotionDisplay()
     {
-        int theme = 0;
+        int theme = board.theme;
         std::cout << "\033c"; // Clear screen
 
         for (int i = 0; i < 8; ++i)
@@ -1565,15 +1564,17 @@ public:
         }
     }
 
-    void getTheme(){
+    void getTheme()
+    {
         std::ifstream inFile("theme.txt");
-        if(!inFile){
-            std::cerr<<"Error opening file for reading";
+        if (!inFile)
+        {
+            std::cerr << "Error opening file for reading";
         }
-        inFile>>board.theme;
+        inFile >> board.theme;
         inFile.close();
     }
-    
+
     void run()
     {
         getTheme();
@@ -1624,7 +1625,7 @@ public:
             std::cerr << "Error opening file for writing\n";
             return;
         }
-        outFile<<board.theme;
+        outFile << board.theme;
         outFile.close();
     }
 
@@ -1662,13 +1663,28 @@ public:
     }
 };
 
+void startMenuSong(bool &started) {
+    if (!started) {
+        system("(while true; do aplay -q menusong.wav >/dev/null 2>&1; done) &");
+        started = true;
+    }
+}
+
+void endMenuSong(bool &started) {
+    system("pkill aplay >/dev/null 2>&1");
+    started = false;
+}
+
+
 int main()
 {
     GameManager g;
     char cha;
+    bool menuMusicStarted = false;
 
     while (true)
     {
+        startMenuSong(menuMusicStarted);
 
         system("clear");
         std::cout << "\n\t WELCOME TO CHESS" << std::endl;
@@ -1682,10 +1698,12 @@ int main()
         switch (cha)
         {
         case '1':
+        endMenuSong(menuMusicStarted);
         {
-            GameManager g;
+          GameManager g;
             g.run();
         }
+        startMenuSong(menuMusicStarted);
         break;
 
         case '2':
