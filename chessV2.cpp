@@ -1663,48 +1663,40 @@ public:
     }
 };
 
-void startMenuSong(bool &started) {
-    if (!started) {
-        system("(while true; do aplay -q menusong.wav >/dev/null 2>&1; done) &");
-        started = true;
-    }
+
+void startMenuSong() {
+    system("nohup aplay -q menusong.wav >/dev/null 2>&1 & echo $! > /tmp/menusong.pid");
 }
 
-void endMenuSong(bool &started) {
-    system("pkill aplay >/dev/null 2>&1");
-    started = false;
+void endMenuSong() {
+    system("pkill -f menusong.wav >/dev/null 2>&1");
 }
 
-
-int main()
-{
+int main() {
     GameManager g;
     char cha;
-    bool menuMusicStarted = false;
 
-    while (true)
-    {
-        startMenuSong(menuMusicStarted);
+    startMenuSong(); // Start menu music once
 
+    while (true) {
         system("clear");
         std::cout << "\n\t WELCOME TO CHESS" << std::endl;
-        std::cout << "1:start" << std::endl;
-        std::cout << "2:Instructions" << std::endl;
-        std::cout << "3:Customize board" << std::endl;
-        std::cout << "4:Exit" << std::endl;
+        std::cout << "1: Start" << std::endl;
+        std::cout << "2: Instructions" << std::endl;
+        std::cout << "3: Customize Board" << std::endl;
+        std::cout << "4: Exit" << std::endl;
 
         cha = getch();
 
-        switch (cha)
-        {
+        switch (cha) {
         case '1':
-        endMenuSong(menuMusicStarted);
-        {
-          GameManager g;
-            g.run();
-        }
-        startMenuSong(menuMusicStarted);
-        break;
+            endMenuSong();   
+            {
+                GameManager game;
+                game.run();
+            }
+            startMenuSong(); 
+            break;
 
         case '2':
             g.displayInstructions();
@@ -1715,11 +1707,14 @@ int main()
             break;
 
         case '4':
+            endMenuSong(); 
             return 0;
+
         default:
             break;
         }
     }
 
+    endMenuSong();
     return 0;
 }
