@@ -1263,7 +1263,7 @@ public:
             {
                 moveGeneration.kingRookMoved[0][2] = true;
             }
-            else
+            else if(fromX == 7)
             {
                 moveGeneration.kingRookMoved[0][1] = true;
             }
@@ -1274,7 +1274,7 @@ public:
             {
                 moveGeneration.kingRookMoved[1][2] = true;
             }
-            else
+            else if(fromX == 7)
             {
                 moveGeneration.kingRookMoved[1][1] = true;
             }
