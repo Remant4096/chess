@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <fstream>
 #include <termios.h>
 #include <unistd.h>
 #include <cstdlib>
@@ -20,9 +21,10 @@ class Cursor
 public:
     int xCord, yCord, enterCounter;
     bool counterTrigger;
+    bool gamestatus = false;
 
 public:
-    Cursor() : xCord(4), yCord(5), enterCounter(0), counterTrigger(false) {}
+    Cursor() : xCord(4), yCord(5), enterCounter(0), counterTrigger(false), gamestatus(false) {}
 
     void up()
     {
@@ -141,6 +143,9 @@ public:
         case '\n':
             counterTrigger = true;
             enterCounter++;
+            break;
+        case 'l':
+            gamestatus = true;
             break;
         default:
             break;
@@ -276,8 +281,10 @@ public:
     bool pawnPromote;
     int kingX, kingY;
     bool castling;
+    int theme;
+    int totalTheme;
 
-    Board(Cursor &c) : cursor(c), currentTurn(0), isKinginCheck(false), isCheckMate(false), isDraw(false), moved(false), pawnPromote(false), castling(false) {}
+    Board(Cursor &c) : cursor(c), currentTurn(0), isKinginCheck(false), isCheckMate(false), isDraw(false), moved(false), pawnPromote(false), castling(false), theme(0), totalTheme(2) {}
 
     void initialize()
     {
@@ -360,7 +367,6 @@ public:
 
     void display()
     {
-        int theme = 0;
         std::cout << "\033c"; // Clear screen
 
         for (int i = 0; i < 8; ++i)
@@ -816,7 +822,7 @@ public:
         if (!kingRookMoved[setKing][0] && !board.isKinginCheck)
         {
             // check for king side rook moved x++
-            if (!kingRookMoved[setKing][1] && board.arr[7*(1-setKing)][7] == 2 + target)
+            if (!kingRookMoved[setKing][1] && board.arr[7 * (1 - setKing)][7] == 2 + target)
             {
                 if (board.arr[y][x + 1] == 0 && board.arr[y][x + 2] == 0)
                 {
@@ -827,7 +833,7 @@ public:
             }
 
             // chcek queen side rook moved x--
-            if (!kingRookMoved[setKing][2]  && board.arr[7*(1-setKing)][0] == 2 + target)
+            if (!kingRookMoved[setKing][2] && board.arr[7 * (1 - setKing)][0] == 2 + target)
             {
                 if (board.arr[y][x - 1] == 0 && board.arr[y][x - 2] == 0 && board.arr[y][x - 3] == 0)
                 {
@@ -1161,20 +1167,20 @@ public:
                     val2 = simulatedKingInCheck(pieceX, pieceY, pieceX + 2, possibleMoves[i][1]);
                 }
 
-                if(!(val1 || val2)){
+                if (!(val1 || val2))
+                {
                     legalMoves.push_back({possibleMoves[i][0], possibleMoves[i][1]});
                 }
-                
             }
-            else{
+            else
+            {
 
                 if (!simulatedKingInCheck(pieceX, pieceY, possibleMoves[i][0], possibleMoves[i][1]))
                 {
-    
+
                     legalMoves.push_back({possibleMoves[i][0], possibleMoves[i][1]});
                 }
             }
-            
         }
 
         return legalMoves;
@@ -1205,7 +1211,7 @@ public:
 
     MoveValidation(Board &b, MoveGeneration &m, KingSafety &king) : board(b), moveGeneration(m), kingSafety(king) {}
 
-    //this is called when a piece is selected
+    // this is called when a piece is selected
     cordinateArr getLegalMoves(int pieceX, int pieceY)
     {
         fromX = pieceX;
@@ -1243,29 +1249,35 @@ public:
     {
         if (board.arr[fromY][fromX] == 6)
         {
-            //white king
-            moveGeneration.kingRookMoved[0][0]=true;
+            // white king
+            moveGeneration.kingRookMoved[0][0] = true;
         }
-        else if(board.arr[fromY][fromX] == 12){
-            //black king
-            moveGeneration.kingRookMoved[1][0]=true;
+        else if (board.arr[fromY][fromX] == 12)
+        {
+            // black king
+            moveGeneration.kingRookMoved[1][0] = true;
         }
 
-        if(board.arr[fromY][fromX] == 2)
+        if (board.arr[fromY][fromX] == 2)
         {
-            if(fromX == 0){
-                moveGeneration.kingRookMoved[0][2]=true;
+            if (fromX == 0)
+            {
+                moveGeneration.kingRookMoved[0][2] = true;
             }
-            else{
-                moveGeneration.kingRookMoved[0][1]=true;
+            else
+            {
+                moveGeneration.kingRookMoved[0][1] = true;
             }
         }
-        else if(board.arr[fromY][fromX] == 8){
-             if(fromX == 0 ){
-                moveGeneration.kingRookMoved[1][2]=true;
+        else if (board.arr[fromY][fromX] == 8)
+        {
+            if (fromX == 0)
+            {
+                moveGeneration.kingRookMoved[1][2] = true;
             }
-            else{
-                moveGeneration.kingRookMoved[1][1]=true;
+            else
+            {
+                moveGeneration.kingRookMoved[1][1] = true;
             }
         }
     }
@@ -1333,7 +1345,6 @@ public:
         }
         return false;
     }
-
 };
 
 char getch()
@@ -1371,7 +1382,7 @@ private:
 public:
     bool gameStatus;
 
-    GameManager() : cursor(), limitedCursor(), board(cursor), inputHandling(cursor, board), moveGeneration(board), kingsafety(board, moveGeneration), moveValidation(board,moveGeneration,kingsafety), sound(), gameStatus(true) {}
+    GameManager() : cursor(), limitedCursor(), board(cursor), inputHandling(cursor, board), moveGeneration(board), kingsafety(board, moveGeneration), moveValidation(board, moveGeneration, kingsafety), sound(), gameStatus(true) {}
 
     void kingIncheck()
     {
@@ -1547,15 +1558,25 @@ public:
 
     void updateGameStatus()
     {
-        if (board.isCheckMate || board.isDraw)
+        if (board.isCheckMate || board.isDraw || cursor.gamestatus)
         {
             gameStatus = false;
             sound.gameOver();
         }
     }
 
+    void getTheme(){
+        std::ifstream inFile("theme.txt");
+        if(!inFile){
+            std::cerr<<"Error opening file for reading";
+        }
+        inFile>>board.theme;
+        inFile.close();
+    }
+    
     void run()
     {
+        getTheme();
         board.initialize();
 
         sound.start();
@@ -1570,12 +1591,117 @@ public:
             updateGameStatus();
         }
         board.display();
+        std::cout << "Game Ended" << std::endl;
+        getch();
+    }
+
+    void displayInstructions()
+    {
+        system("clear");
+        std::ifstream file("instructions.txt");
+        if (!file)
+        {
+            std::cerr << "Error: Could not open instructions.txt\n";
+            return;
+        }
+
+        std::string line;
+        while (std::getline(file, line))
+        {
+            std::cout << line << "\n";
+        }
+
+        file.close();
+        std::cout << "\nPress Enter to continue...";
+        std::cin.get();
+    }
+
+    void saveTheme()
+    {
+        std::ofstream outFile("theme.txt");
+        if (!outFile)
+        {
+            std::cerr << "Error opening file for writing\n";
+            return;
+        }
+        outFile<<board.theme;
+        outFile.close();
+    }
+
+    void customizeBoard()
+    {
+        board.initialize();
+        char select;
+
+        while (true)
+        {
+            select = getch();
+            if (select == 'a')
+            {
+                if (board.theme > 0)
+                {
+                    board.theme--;
+                }
+            }
+            else if (select == 'd')
+            {
+                if (board.theme < board.totalTheme - 1)
+                {
+                    board.theme++;
+                }
+            }
+            else if (select == '\n')
+            {
+                saveTheme();
+                std::cout << "Board selectd press any key to exit" << std::endl;
+                getch();
+                break;
+            }
+            board.display();
+        }
     }
 };
 
 int main()
 {
     GameManager g;
-    g.run();
+    char cha;
+
+    while (true)
+    {
+
+        system("clear");
+        std::cout << "\n\t WELCOME TO CHESS" << std::endl;
+        std::cout << "1:start" << std::endl;
+        std::cout << "2:Instructions" << std::endl;
+        std::cout << "3:Customize board" << std::endl;
+        std::cout << "4:Exit" << std::endl;
+
+        cha = getch();
+
+        switch (cha)
+        {
+        case '1':
+        {
+            GameManager g;
+            g.run();
+        }
+        break;
+
+        case '2':
+            g.displayInstructions();
+            break;
+
+        case '3':
+            g.customizeBoard();
+            break;
+
+        case '4':
+            return 0;
+        default:
+            break;
+        }
+    }
+
     return 0;
 }

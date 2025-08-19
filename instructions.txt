@@ -1,0 +1,28 @@
+====================================================
+                 CHESS GAME INSTRUCTIONS
+====================================================
+
+                     OBJECTIVE
+----------------------------------------------------
+     Play chess against a friend (pass and play)  
+     and aim to CHECKMATE their king.  
+     This game is two-player, turn-based,  
+     and played entirely in the terminal.  
+
+                     CONTROLS
+----------------------------------------------------
+     Use  W  A  S  D   → Navigate the board  
+
+     Press  ENTER      → Select piece  
+
+     Use W A S D again → Navigate possible moves  
+
+     Press  ENTER      → Confirm move  
+
+     Press  L          → Exit the game
+     
+
+====================================================
+                 Enjoy your game of Chess!
+====================================================
+
